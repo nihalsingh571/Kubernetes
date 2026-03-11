@@ -23,6 +23,8 @@ InternConnect is a comprehensive platform designed to bridge the gap between stu
 -   **Recruiter Dashboard**: Post internships, manage applications, and view candidates ranked by their VSPS score.
 -   **Student Portal**: Take skill assessments, view recommended internships, and apply with one click.
 -   **Real-time Notifications**: Instant updates on application status (Planned).
+-   **Comprehensive Testing Framework**: 68 automated tests covering backend APIs, frontend components, E2E user journeys, and integration workflows.
+-   **CI/CD Pipeline**: Automated testing and deployment with GitHub Actions, coverage reporting, and security scanning.
 
 ## 🛠️ Technology Stack
 
@@ -30,6 +32,8 @@ InternConnect is a comprehensive platform designed to bridge the gap between stu
 -   **Backend**: Django REST Framework (Python)
 -   **Database**: SQLite (Dev) / PostgreSQL (Prod)
 -   **ML Engine**: Scikit-Learn, NumPy, Pandas
+-   **Testing**: Jest, React Testing Library, pytest, Playwright, Codecov
+-   **CI/CD**: GitHub Actions, Bandit (Security), ESLint
 
 ## ☁️ DevOps & Infrastructure
 
@@ -55,6 +59,43 @@ This project implements a robust DevOps pipeline ensuring scalability, reliabili
 -   Real-time monitoring of server health, disk usage, and uptime.
 -   Alerting system configured to notify administrators of any downtime or performance anomalies.
 
+## 🧪 Testing Framework
+
+InternConnect includes a comprehensive testing suite ensuring code quality and reliability across all layers.
+
+### Test Coverage
+- **Backend**: 33 tests (pytest + Django) - 60%+ API coverage
+- **Frontend**: 21 component tests (Jest + React Testing Library)
+- **E2E**: 6 user journey tests (Playwright)
+- **Integration**: 8 workflow tests (auth + ML engine)
+- **Total**: 68 automated tests
+
+### Running Tests
+
+```bash
+# Backend tests with coverage
+cd backend
+source ../.venv/bin/activate  # Activate virtual environment
+python -m pytest --cov=. --cov-report=html
+
+# Frontend component tests
+cd src
+npm test
+
+# E2E tests
+npx playwright test
+
+# Integration tests
+cd backend
+python -m pytest core/test_integration.py -v
+```
+
+### CI/CD Pipeline
+- Automated testing on every push/PR via GitHub Actions
+- Coverage reporting with Codecov
+- Security scanning with Bandit
+- Multi-stage pipeline: lint → test → build → deploy
+
 ## 🏁 Getting Started
 
 ### Prerequisites
@@ -73,6 +114,8 @@ This project implements a robust DevOps pipeline ensuring scalability, reliabili
 2.  **Backend Setup**
     ```bash
     cd backend
+    python -m venv ../.venv  # Create virtual environment
+    source ../.venv/bin/activate  # Activate virtual environment
     pip install -r requirements.txt
     python manage.py migrate
     python manage.py runserver
@@ -85,5 +128,26 @@ This project implements a robust DevOps pipeline ensuring scalability, reliabili
     npm run dev
     ```
 
----
-*Built with ❤️ by Nihal Singh*
+4.  **Run Tests (Optional but Recommended)**
+    ```bash
+    # Backend tests
+    cd backend
+    source ../.venv/bin/activate
+    python -m pytest --cov=. --cov-report=term
+
+    # Frontend tests
+    cd src
+    npm test
+
+    # E2E tests (requires backend running)
+    npx playwright test
+    ```
+
+### Docker Setup (Alternative)
+```bash
+docker-compose up --build
+```
+
+### 📖 Documentation
+- [Testing Guide](TESTING.md) - Comprehensive testing documentation
+- [Features](FEATURES.md) - Detailed feature list and roadmap

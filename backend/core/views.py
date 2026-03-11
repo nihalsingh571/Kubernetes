@@ -49,6 +49,12 @@ class RecruiterProfileViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        # prevent recruiters from toggling their own verified flag
+        if request.user.role == User.Role.RECRUITER and 'is_verified' in request.data:
+            return Response({'detail': 'Cannot verify yourself'}, status=status.HTTP_403_FORBIDDEN)
+        return super().update(request, *args, **kwargs)
+
     @action(detail=False, methods=['GET', 'PATCH'])
     def me(self, request):
         profile, created = RecruiterProfile.objects.get_or_create(user=request.user)
@@ -66,8 +72,12 @@ class InternshipViewSet(viewsets.ModelViewSet):
     serializer_class = InternshipSerializer
     
     def get_permissions(self):
+        # allow anonymous access to list and retrieve
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'applicants']:
             return [IsRecruiter()]
+        if self.action in ['list', 'retrieve', 'recommendations']:
+            from rest_framework.permissions import AllowAny
+            return [AllowAny()]
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
@@ -173,3 +183,30 @@ class InternshipViewSet(viewsets.ModelViewSet):
             response_data.append(i_data)
         
         return Response(response_data)
+
+
+class ApplicationViewSet(viewsets.ModelViewSet):
+    serializer_class = ApplicationSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == User.Role.APPLICANT:
+            try:
+                return Application.objects.filter(applicant=user.applicant_profile)
+            except ApplicantProfile.DoesNotExist:
+                return Application.objects.none()
+        elif user.role == User.Role.RECRUITER:
+            try:
+                return Application.objects.filter(internship__recruiter=user.recruiter_profile)
+            except RecruiterProfile.DoesNotExist:
+                return Application.objects.none()
+        return Application.objects.none()
+
+    def perform_update(self, serializer):
+        # only recruiters can change status
+        if self.request.user.role == User.Role.RECRUITER:
+            serializer.save()
+        else:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied()

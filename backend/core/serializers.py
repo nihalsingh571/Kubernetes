@@ -5,14 +5,19 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(source='user.email')
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
+    # expose the degree field under the more familiar name "education" for clients
+    education = serializers.CharField(source='degree', required=False, allow_blank=True)
 
     class Meta:
         model = ApplicantProfile
-        fields = ['id', 'email', 'first_name', 'last_name', 'skills', 'college', 'degree',
+        # include education field in the response so clients can update it
+        fields = ['id', 'email', 'first_name', 'last_name', 'skills', 'college', 'degree', 'education',
                   'assessment_accuracy', 'assessment_speed_score', 'assessment_skip_penalty',
                   'vsps_score', 'recency_score', 'mobile_number', 'github_link', 'linkedin_link']
         extra_kwargs = {
-            'email': {'required': False}
+            'email': {'required': False},
+            # degree/education are optional
+            'degree': {'required': False},
         }
 
     def update(self, instance, validated_data):
@@ -47,6 +52,10 @@ class RecruiterProfileSerializer(serializers.ModelSerializer):
 class InternshipSerializer(serializers.ModelSerializer):
     recruiter_name = serializers.CharField(source='recruiter.user.get_full_name', read_only=True)
     company_name = serializers.CharField(source='recruiter.company_name', read_only=True)
+    # allow description/location/skills to be omitted when creating
+    description = serializers.CharField(required=False, allow_blank=True)
+    location = serializers.CharField(required=False)
+    required_skills = serializers.ListField(child=serializers.CharField(), required=False)
     
     class Meta:
         model = Internship
@@ -66,6 +75,6 @@ class ApplicationSerializer(serializers.ModelSerializer):
         model = Application
         fields = ['id', 'internship', 'applicant', 'status', 'applied_at', 
                   'applicant_name', 'applicant_email', 'applicant_vsps']
-        read_only_fields = ['applicant', 'applied_at', 'status'] 
-        # Status might be writable by recruiter, but for creation it's read-only
+        # make status writable; viewset enforces that only recruiters can change it
+        read_only_fields = ['applicant', 'applied_at']
 
