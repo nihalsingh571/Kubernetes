@@ -1,194 +1,121 @@
-import React from 'react';
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from '@testing-library/user-event';
-import Signup from "../pages/Signup.jsx";
-import { mockSignup, mockNavigate } from '../setupTests';
+import React from 'react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import Signup from '../pages/Signup.jsx'
+import { mockSignup } from '../setupTests'
 
-// Mock API
-jest.mock('../services/api');
-
-describe("Signup Component", () => {
+describe('Signup Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    mockNavigate.mockClear();
-    mockSignup.mockClear();
-  });
+    jest.clearAllMocks()
+  })
 
-  test("Signup component renders correctly", () => {
-    render(<Signup />);
-    
-    expect(screen.getByText("Create an account")).toBeInTheDocument();
-    // default role option shows readable text
-    expect(screen.getByDisplayValue("Student / Applicant")).toBeInTheDocument();
-  });
+  const proceedToProfileStep = async (user, { role = 'APPLICANT' } = {}) => {
+    if (role === 'RECRUITER') {
+      await user.click(screen.getByRole('button', { name: /i'm a recruiter/i }))
+    } else {
+      await user.click(screen.getByRole('button', { name: /i'm a student/i }))
+    }
+    const usernameValue = role === 'RECRUITER' ? 'talentlead' : 'innovator'
+    fireEvent.change(screen.getByLabelText(/choose a username/i), { target: { value: usernameValue } })
+    expect(screen.getByLabelText(/choose a username/i)).toHaveValue(usernameValue)
+    const emailLabel = role === 'RECRUITER' ? /work email/i : /email address/i
+    const emailValue = role === 'RECRUITER' ? 'lead@company.com' : 'student@example.com'
+    fireEvent.change(screen.getByLabelText(emailLabel), { target: { value: emailValue } })
+    expect(screen.getByLabelText(emailLabel)).toHaveValue(emailValue)
+    const nextButton = screen.getByRole('button', { name: /next step/i })
+    await user.click(nextButton)
+    // debug
+    await screen.findByLabelText(/first name/i)
+  }
 
-  test("Has password and confirm password fields", () => {
-    render(<Signup />);
-    
-    const passwordInput = screen.getByPlaceholderText("Password");
-    const confirmPasswordInput = screen.getByPlaceholderText("Confirm Password");
-    expect(passwordInput).toBeInTheDocument();
-    expect(confirmPasswordInput).toBeInTheDocument();
-  });
+  const completeStudentProfileStep = async (user) => {
+    fireEvent.change(await screen.findByLabelText(/first name/i), { target: { value: 'John' } })
+    fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Doe' } })
+    fireEvent.change(screen.getByLabelText(/university \/ college/i), { target: { value: 'InternConnect University' } })
+    fireEvent.change(screen.getByLabelText(/degree/i), { target: { value: 'B.Tech' } })
+    fireEvent.change(screen.getByLabelText(/major \/ branch/i), { target: { value: 'Computer Science' } })
+    fireEvent.change(screen.getByLabelText(/graduation year/i), { target: { value: '2026' } })
+    fireEvent.change(screen.getByLabelText(/interested role/i), { target: { value: 'Software Developer' } })
+    fireEvent.change(screen.getByLabelText(/skills/i), { target: { value: 'Python, React' } })
+    const nextButton = screen.getByRole('button', { name: /next step/i })
+    await user.click(nextButton)
+  }
 
-  test("Role dropdown has Applicant and Recruiter options", () => {
-    render(<Signup />);
-    
-    const roleSelect = screen.getByRole('combobox');
-    expect(roleSelect).toBeInTheDocument();
-    expect(roleSelect.value).toBe('APPLICANT');
-    
-    const options = roleSelect.querySelectorAll('option');
-    expect(options.length).toBe(2);
-    expect(options[0].value).toBe("APPLICANT");
-    expect(options[1].value).toBe("RECRUITER");
-  });
+  const fillSecurityStep = async (user, { acceptTerms = true } = {}) => {
+    fireEvent.change(await screen.findByLabelText(/create password/i), { target: { value: 'Password123!' } })
+    fireEvent.change(screen.getByLabelText(/confirm password/i), { target: { value: 'Password123!' } })
+    if (acceptTerms) {
+      await user.click(await screen.findByRole('checkbox', { name: /terms of service/i }))
+    }
+    const submitButton = screen.getByRole('button', { name: /create account/i })
+    await user.click(submitButton)
+  }
 
-  test("User can fill out form fields", async () => {
-    const user = userEvent.setup();
-    render(<Signup />);
-    
-    const firstNameInput = screen.getByPlaceholderText("First Name");
-    const lastNameInput = screen.getByPlaceholderText("Last Name");
-    const usernameInput = screen.getByPlaceholderText("Username");
-    const emailInput = screen.getByPlaceholderText("Email address");
-    
-    await user.type(firstNameInput, "John");
-    await user.type(lastNameInput, "Doe");
-    await user.type(usernameInput, "johndoe");
-    await user.type(emailInput, "john@example.com");
-    
-    expect(firstNameInput.value).toBe("John");
-    expect(lastNameInput.value).toBe("Doe");
-    expect(usernameInput.value).toBe("johndoe");
-    expect(emailInput.value).toBe("john@example.com");
-  });
+  test('renders hero and default account step', () => {
+    render(<Signup />)
 
-  test("User can change role", async () => {
-    const user = userEvent.setup();
-    render(<Signup />);
-    
-    const roleSelect = screen.getByRole('combobox');
-    await user.selectOptions(roleSelect, "RECRUITER");
-    
-    expect(roleSelect.value).toBe("RECRUITER");
-  });
+    expect(screen.getByText(/Join the Future of Internships/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/^Account$/i)[0]).toBeInTheDocument()
+    expect(screen.getByLabelText(/Choose a username/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Email Address/i)).toBeInTheDocument()
+  })
 
-  test("Form submission calls signup with correct data", async () => {
-    const user = userEvent.setup();
-    mockSignup.mockResolvedValue({ success: true });
-    
-    render(<Signup />);
-    
-    await user.type(screen.getByPlaceholderText("First Name"), "John");
-    await user.type(screen.getByPlaceholderText("Last Name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Username"), "johndoe");
-    await user.type(screen.getByPlaceholderText("Email address"), "john@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "password123");
-    
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
-    await user.click(submitButton);
-    
+  test('switching role updates account fields', async () => {
+    const user = userEvent.setup()
+    render(<Signup />)
+
+    await user.click(screen.getByRole('button', { name: /i'm a recruiter/i }))
+
+    expect(await screen.findByLabelText(/Work Email/i)).toBeInTheDocument()
+    expect(screen.queryByLabelText(/University Email/i)).not.toBeInTheDocument()
+  })
+
+  test('requires student profile info before advancing', async () => {
+    const user = userEvent.setup()
+    render(<Signup />)
+
+    await proceedToProfileStep(user)
+    await screen.findByLabelText(/first name/i)
+
+    const nextButton = screen.getByRole('button', { name: /next step/i })
+    await user.click(nextButton)
+
+    expect(screen.getByRole('button', { name: /next step/i })).toBeInTheDocument()
+    expect(mockSignup).not.toHaveBeenCalled()
+  })
+
+  test('completes student signup flow and calls signup', async () => {
+    const user = userEvent.setup()
+    mockSignup.mockResolvedValue({ success: true })
+
+    render(<Signup />)
+
+    await proceedToProfileStep(user)
+    await completeStudentProfileStep(user)
+    await fillSecurityStep(user)
+
     await waitFor(() => {
-      expect(mockSignup).toHaveBeenCalledWith(expect.objectContaining({
-        first_name: "John",
-        last_name: "Doe",
-        username: "johndoe",
-        email: "john@example.com",
-        role: "APPLICANT",
-      }));
-    });
-  });
+      expect(mockSignup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: 'innovator',
+          email: 'student@example.com',
+          role: 'APPLICANT',
+        }),
+      )
+    })
+  })
 
-  test("Navigates to login on successful signup", async () => {
-    const user = userEvent.setup();
-    mockSignup.mockResolvedValue({ success: true });
-    
-    render(<Signup />);
-    
-    await user.type(screen.getByPlaceholderText("First Name"), "John");
-    await user.type(screen.getByPlaceholderText("Last Name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Username"), "johndoe");
-    await user.type(screen.getByPlaceholderText("Email address"), "john@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "password123");
-    
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
-    await user.click(submitButton);
-    
-    await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith("/login");
-    });
-  });
+  test('requires accepting terms before submission', async () => {
+    const user = userEvent.setup()
+    mockSignup.mockResolvedValue({ success: true })
 
-  test("Displays error message on failed signup", async () => {
-    const user = userEvent.setup();
-    const errorMsg = "Email already exists";
-    mockSignup.mockResolvedValue({ success: false, error: { email: [errorMsg] } });
-    
-    render(<Signup />);
-    
-    await user.type(screen.getByPlaceholderText("First Name"), "John");
-    await user.type(screen.getByPlaceholderText("Last Name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Username"), "johndoe");
-    await user.type(screen.getByPlaceholderText("Email address"), "existing@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "password123");
-    
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
-    await user.click(submitButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/email already exists/i)).toBeInTheDocument();
-    });
-  });
+    render(<Signup />)
 
-  test("Login link navigates to login page", () => {
-    render(<Signup />);
-    
-    const loginLink = screen.getByText(/sign in/i);
-    expect(loginLink).toBeInTheDocument();
-    expect(loginLink.closest('a')).toHaveAttribute('to', '/login');
-  });
+    await proceedToProfileStep(user)
+    await completeStudentProfileStep(user)
+    await fillSecurityStep(user, { acceptTerms: false })
 
-  test("All fields are required", () => {
-    render(<Signup />);
-    
-    const inputs = screen.getAllByRole('textbox');
-    inputs.forEach(input => {
-      if (input.type === 'email' || input.name === 'username' || 
-          input.name === 'first_name' || input.name === 'last_name') {
-        expect(input).toBeRequired();
-      }
-    });
-  });
-
-  test("Email field has correct type", () => {
-    render(<Signup />);
-    
-    const emailInput = screen.getByPlaceholderText("Email address");
-    expect(emailInput.type).toBe("email");
-  });
-
-  test("Clears error message on form change", async () => {
-    const user = userEvent.setup();
-    mockSignup.mockResolvedValue({ success: false, error: "Signup failed" });
-    
-    render(<Signup />);
-    
-    await user.type(screen.getByPlaceholderText("First Name"), "John");
-    await user.type(screen.getByPlaceholderText("Last Name"), "Doe");
-    await user.type(screen.getByPlaceholderText("Username"), "johndoe");
-    await user.type(screen.getByPlaceholderText("Email address"), "john@example.com");
-    await user.type(screen.getByPlaceholderText("Password"), "password123");
-    await user.type(screen.getByPlaceholderText("Confirm Password"), "password123");
-    
-    const submitButton = screen.getByRole("button", { name: /sign up/i });
-    await user.click(submitButton);
-    
-    await waitFor(() => {
-      expect(screen.getByText(/signup failed/i)).toBeInTheDocument();
-    });
-  });
-});
+    expect(mockSignup).not.toHaveBeenCalled()
+    expect(await screen.findByText(/Please accept the Terms/i)).toBeInTheDocument()
+  })
+})

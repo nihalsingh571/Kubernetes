@@ -7,6 +7,9 @@ class ApplicantProfile(models.Model):
     skills = models.JSONField(default=list)  # List of strings e.g. ["Python", "Django"]
     college = models.CharField(max_length=255, blank=True)
     degree = models.CharField(max_length=255, blank=True)
+    major = models.CharField(max_length=255, blank=True)
+    graduation_year = models.PositiveIntegerField(null=True, blank=True)
+    interested_role = models.CharField(max_length=255, blank=True)
     
     # Micro-assessment scores (normalized 0-1)
     assessment_accuracy = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
@@ -41,17 +44,50 @@ class Internship(models.Model):
     title = models.CharField(max_length=255)
     description = models.TextField()
     location = models.CharField(max_length=255, default='Remote')
+    work_type = models.CharField(max_length=50, default='On-site')
+    stipend = models.PositiveIntegerField(null=True, blank=True)
     required_skills = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
-    
-    # Recruiter rating for this internship context (optional, normalized 0-1) or inherited from recruiter trust
-    recruiter_rating = models.FloatField(null=True, blank=True, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
-    
-    # Recency of listing (could be computed dynamically, but storing base score for now)
-    recency_score = models.FloatField(default=1.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
+
+class PlatformSettings(models.Model):
+    """Global platform settings"""
+    enforce_2fa_for_admins_recruiters = models.BooleanField(default=True)
+    auto_approve_verified_recruiters = models.BooleanField(default=False)
+    recruiter_rating = models.FloatField(
+        blank=True,
+        null=True,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+    )
+    recency_score = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+    )
+
+    # Singleton pattern - only one instance should exist
+    class Meta:
+        verbose_name = "Platform Setting"
+        verbose_name_plural = "Platform Settings"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one instance exists
+        if not self.pk and PlatformSettings.objects.exists():
+            raise ValueError("Only one PlatformSettings instance can exist")
+        return super().save(*args, **kwargs)
+
+    @classmethod
+    def get_settings(cls):
+        """Get the singleton platform settings instance"""
+        settings, created = cls.objects.get_or_create(
+            pk=1,
+            defaults={
+                'enforce_2fa_for_admins_recruiters': True,
+                'auto_approve_verified_recruiters': False,
+            },
+        )
+        return settings
 
     def __str__(self):
-        return self.title
+        return "Platform Settings"
 
 class Application(models.Model):
     STATUS_CHOICES = [

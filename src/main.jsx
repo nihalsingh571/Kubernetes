@@ -6,6 +6,10 @@ import NotificationProvider from './components/notifications/NotificationContain
 import './index.css'
 import App from './App.jsx'
 
+if (typeof window !== 'undefined') {
+  window.__APP_ENV__ = import.meta.env
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>

@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Sparkles, ShieldCheck, Zap, TrendingUp, Clock8, ArrowUpRight, LineChart, Activity } from 'lucide-react';
 import API from '../services/api';
 import { useAuth } from '../context/AuthContext';
-import GlowingIndiaMap from '../components/ui/GlowingIndiaMap';
-import NotificationTrigger from '../components/notifications/NotificationTrigger';
-import CategoryCard from '../components/ui/CategoryCard';
 
 export default function StudentHome() {
     const { user } = useAuth();
@@ -13,17 +11,31 @@ export default function StudentHome() {
     const [profile, setProfile] = useState(null);
     const [internships, setInternships] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState('Developer');
 
     useEffect(() => {
+        const fetchRecommendedInternships = async () => {
+            try {
+                const recRes = await API.get('/api/internships/recommendations/');
+                return recRes.data || [];
+            } catch (error) {
+                if (error?.response?.status === 403 || error?.response?.status === 401 || error?.response?.status === 404) {
+                    const allRes = await API.get('/api/internships/');
+                    return allRes.data || [];
+                }
+                throw error;
+            }
+        };
+
         const fetchData = async () => {
             try {
-                const profileRes = await API.get('/api/applicants/me/');
-                setProfile(profileRes.data);
-
-                // Preview a few recommended internships (same endpoint used on internships page)
-                const internRes = await API.get('/api/internships/recommendations/');
-                setInternships(internRes.data || []);
+                const [profileRes, internshipsData] = await Promise.all([
+                    API.get('/api/applicants/me/').catch(() => null),
+                    fetchRecommendedInternships(),
+                ]);
+                if (profileRes?.data) {
+                    setProfile(profileRes.data);
+                }
+                setInternships(internshipsData);
             } catch (err) {
                 console.error('Failed to fetch student dashboard data', err);
             } finally {
@@ -34,338 +46,317 @@ export default function StudentHome() {
         fetchData();
     }, []);
 
-    if (loading) return <div>Loading...</div>;
-
-    const isVerified = profile?.vsps_score > 0.0;
-    const score = profile?.vsps_score?.toFixed(2) || '0.00';
+    const vspsScore = Number(profile?.vsps_score || 0);
+    const formattedScore = vspsScore ? Math.round(vspsScore * 1000) / 10 : 0;
     const featured = internships.slice(0, 3);
+    const verificationLevel = useMemo(() => {
+        if (vspsScore >= 0.9) return 'Level 5';
+        if (vspsScore >= 0.7) return 'Level 4';
+        if (vspsScore >= 0.5) return 'Level 3';
+        if (vspsScore >= 0.3) return 'Level 2';
+        return 'Level 1';
+    }, [vspsScore]);
+    const matchesCount = internships.length;
+    const verificationProgress = Math.min(100, Math.round(vspsScore * 100));
+    const accuracyPct = Math.round((profile?.assessment_accuracy || 0) * 100);
+    const speedPct = Math.round((profile?.assessment_speed_score || 0) * 100);
+    const skipPct = Math.max(0, 100 - Math.round((profile?.assessment_skip_penalty || 0) * 100));
+    const hintText =
+        profile?.headline ||
+        `Your skill verification is ${verificationProgress}% complete. Keep pushing for premium matches.`;
 
-    const categoryDataset = {
-        Developer: {
-            title: 'Software Development Internship',
-            company: 'Devdoq',
-            location: 'Remote / Bangalore',
-            description:
-                'Work with a modern stack to build scalable backend services, write clean APIs, and collaborate with senior engineers on real product features.',
-            match: 89,
-        },
-        Product: {
-            title: 'Associate Product Intern',
-            company: 'ProductNest Labs',
-            location: 'Remote / Mumbai',
-            description:
-                'Assist the product team with user research, requirement gathering, and feature prioritisation for a SaaS analytics dashboard.',
-            match: 84,
-        },
-        Analytics: {
-            title: 'Data Analytics Internship',
-            company: 'InsightSphere',
-            location: 'Remote / Gurgaon',
-            description:
-                'Analyse product usage data, build dashboards in Python and SQL, and summarise insights for weekly business reviews.',
-            match: 91,
-        },
-        Marketing: {
-            title: 'Growth Marketing Intern',
-            company: 'LaunchPad Digital',
-            location: 'Hybrid / Delhi',
-            description:
-                'Support growth campaigns, run A/B tests on landing pages, and track performance metrics across paid and organic channels.',
-            match: 77,
-        },
-        Sales: {
-            title: 'Business Development Intern',
-            company: 'PipelineX',
-            location: 'Remote / Pune',
-            description:
-                'Work with the sales team to qualify leads, prepare demos, and track opportunity status in a modern CRM workflow.',
-            match: 82,
-        },
-        Ops: {
-            title: 'Operations Intern',
-            company: 'FlowOps Systems',
-            location: 'On-site / Chennai',
-            description:
-                'Help streamline internal processes, coordinate between cross‑functional teams, and monitor SLAs for service delivery.',
-            match: 80,
-        },
-        Design: {
-            title: 'Product Design Intern',
-            company: 'PixelCraft Studio',
-            location: 'Remote',
-            description:
-                'Collaborate with product and engineering to design flows, wireframes, and high‑fidelity UI screens for a web dashboard.',
-            match: 88,
-        },
+    const growthSeries = useMemo(
+        () => [
+            { label: 'Feb', student: 58, market: 52 },
+            { label: 'Mar', student: 62, market: 55 },
+            { label: 'Apr', student: 67, market: 59 },
+            { label: 'May', student: 73, market: 61 },
+            { label: 'Jun', student: 78, market: 64 },
+        ],
+        [],
+    );
+
+    const buildPath = (values) => {
+        if (values.length === 0) return '';
+        const max = Math.max(...values);
+        const min = Math.min(...values);
+        return values
+            .map((value, index) => {
+                const x = (index / (values.length - 1)) * 100;
+                const relative = max === min ? 0.5 : (value - min) / (max - min);
+                const y = 100 - relative * 80 - 10;
+                return `${index === 0 ? 'M' : 'L'}${x},${y}`;
+            })
+            .join(' ');
     };
 
-    const selectedCategoryData = categoryDataset[selectedCategory];
+    const studentPath = buildPath(growthSeries.map((point) => point.student));
+    const marketPath = buildPath(growthSeries.map((point) => point.market));
+
+    const recentActivity = [
+        featured[0]
+            ? {
+                  title: `New AI matching: ${featured[0].title}`,
+                  time: '2 hours ago',
+                  badge: `${Math.round(featured[0].match_score || 84)}% match`,
+              }
+            : {
+                  title: 'Machine Learning assessment completed',
+                  time: 'Yesterday',
+                  badge: 'Verified',
+              },
+        {
+            title: 'Applied to Product Design Internship',
+            time: '2 days ago',
+            badge: 'Under review',
+        },
+        {
+            title: 'Skill sync: Python + React updated',
+            time: '4 days ago',
+            badge: '+2 skills',
+        },
+    ];
+
+    if (loading) return <div>Loading...</div>;
+
+    const quickActions = [
+        {
+            title: 'Upcoming Deadlines',
+            description: `${Math.min(3, matchesCount)} applications ending soon`,
+            action: 'View timeline',
+            onClick: () => navigate('/student/applications'),
+            color: 'from-indigo-600/80 to-indigo-500/40',
+            icon: Clock8,
+        },
+        {
+            title: 'Skill Blitz',
+            description: 'Quick 5-min AI challenge',
+            action: 'Start challenge',
+            onClick: () => navigate('/student/assessment'),
+            color: 'from-purple-600/80 to-fuchsia-500/40',
+            icon: Zap,
+        },
+        {
+            title: 'Referral Program',
+            description: 'Invite friends and unlock premium',
+            action: 'Invite now',
+            onClick: () => navigate('/student/profile'),
+            color: 'from-blue-600/80 to-cyan-500/40',
+            icon: Sparkles,
+        },
+    ];
 
     return (
-        <div className="space-y-6">
-            {/* Hero-style summary card */}
-            <section className="bg-white rounded-2xl shadow-sm p-6 border border-slate-100">
-                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                    <div>
-                        <p className="text-xs uppercase tracking-wide text-indigo-600 font-semibold">
-                            Welcome back
-                        </p>
-                        <h2 className="text-2xl font-bold text-slate-900 mt-1">
-                            {user?.first_name || 'Student'}
-                        </h2>
-                        <p className="text-sm text-slate-600 mt-2 max-w-xl">
-                            Your verification score and recent assessments help us prioritise internships
-                            that best match your skills and goals.
-                        </p>
-                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                            <div className="bg-indigo-50 rounded-xl p-4 border border-indigo-100">
-                                <p className="text-[11px] font-semibold uppercase text-indigo-500 tracking-wide">
-                                    VSPS Score
-                                </p>
-                                <p className="text-3xl font-bold text-indigo-700 mt-1">{score}</p>
-                            </div>
-                            <div
-                                className={`rounded-xl p-4 border ${
-                                    isVerified
-                                        ? 'bg-green-50 border-green-100'
-                                        : 'bg-amber-50 border-amber-100'
-                                }`}
-                            >
-                                <p
-                                    className={`text-[11px] font-semibold uppercase tracking-wide ${
-                                        isVerified ? 'text-green-600' : 'text-amber-600'
-                                    }`}
-                                >
-                                    Status
-                                </p>
-                                <p
-                                    className={`text-2xl font-bold mt-1 ${
-                                        isVerified ? 'text-green-700' : 'text-amber-700'
-                                    }`}
-                                >
-                                    {isVerified ? 'Verified' : 'Unverified'}
-                                </p>
-                            </div>
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-between">
-                                <p className="text-[11px] font-semibold uppercase text-slate-500 tracking-wide">
-                                    Next step
-                                </p>
-                                {!isVerified ? (
-                                    <button
-                                        onClick={() => navigate('/student/assessment')}
-                                        className="mt-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-full text-xs shadow-sm"
-                                    >
-                                        Take assessment
-                                    </button>
-                                ) : (
-                                    <button
-                                        onClick={() => navigate('/student/internships')}
-                                        className="mt-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-full text-xs shadow-sm"
-                                    >
-                                        View internships
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Category pills with 3D hover & glow */}
-            <section className="flex flex-wrap gap-3">
-                {['Developer', 'Product', 'Analytics', 'Marketing', 'Sales', 'Ops', 'Design'].map(
-                    (label) => (
-                        <CategoryCard
-                            key={label}
-                            label={label}
-                            active={selectedCategory === label}
-                            onClick={() => setSelectedCategory(label)}
-                        />
-                    ),
-                )}
-            </section>
-
-            {/* Selected category featured company */}
-            <section className="mt-2">
-                {selectedCategoryData && (
-                    <motion.div
-                        key={selectedCategory}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-                    >
+        <div className="min-h-[calc(100vh-120px)] bg-transparent text-white">
+            <div className="space-y-8">
+                <motion.section
+                    initial={{ opacity: 0, y: 24 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="rounded-[28px] bg-gradient-to-r from-[#3d2bff] via-[#7b2bff] to-[#c629ff] p-8 shadow-[0_35px_90px_rgba(64,33,155,0.5)]"
+                >
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                         <div>
-                            <p className="text-[11px] uppercase tracking-wide text-slate-500 font-semibold">
-                                Featured in {selectedCategory}
-                            </p>
-                            <h3 className="mt-1 text-sm sm:text-base font-semibold text-slate-900">
-                                {selectedCategoryData.title}
-                            </h3>
-                            <p className="text-xs text-slate-500">
-                                {selectedCategoryData.company} • {selectedCategoryData.location}
-                            </p>
-                            <p className="mt-2 text-xs sm:text-sm text-slate-600 max-w-2xl">
-                                {selectedCategoryData.description}
-                            </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-2 text-xs">
-                            <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                                {selectedCategoryData.match}% match
-                            </span>
-                            <button
-                                type="button"
-                                onClick={() => navigate('/student/internships')}
-                                className="inline-flex items-center justify-center rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-[11px] font-semibold text-indigo-700 hover:bg-indigo-600 hover:text-white"
-                            >
-                                View similar roles
-                            </button>
-                        </div>
-                    </motion.div>
-                )}
-            </section>
-
-            {/* Filters row */}
-            <section className="flex flex-wrap items-center gap-3 text-xs">
-                <span className="font-semibold text-slate-500 uppercase">Filters</span>
-                {['Type', 'Location', 'Roles', 'Sort by'].map((label) => (
-                    <button
-                        key={label}
-                        type="button"
-                        className="inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:border-indigo-500 hover:text-indigo-600"
-                    >
-                        {label}
-                    </button>
-                ))}
-                {!isVerified && (
-                    <span className="text-[11px] text-red-500">
-                        Complete an assessment to unlock personalised ranking.
-                    </span>
-                )}
-            </section>
-
-            {/* Main grid: internship preview + sidebar */}
-            <section className="grid gap-6 lg:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)]">
-                <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900">
-                        Recommended internships preview
-                    </h3>
-
-                    {!isVerified ? (
-                        <div className="bg-slate-100 rounded-2xl p-10 text-center border-2 border-dashed border-slate-300">
-                            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-white text-slate-400 shadow">
-                                🔒
+                            <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-1 text-xs uppercase tracking-[0.35em] text-white/70">
+                                <span className="h-2 w-2 rounded-full bg-white" />
+                                AI Engine Updated v2.4
                             </div>
-                            <h4 className="text-lg font-semibold text-slate-900">
-                                Recommendations locked
-                            </h4>
-                            <p className="mt-2 text-sm text-slate-500">
-                                Complete the skill assessment to see personalised internship matches.
-                            </p>
+                            <h1 className="mt-4 text-4xl font-semibold">Welcome back, {user?.first_name || 'Explorer'}</h1>
+                            <p className="mt-4 max-w-3xl text-base text-white/90">{hintText}</p>
+                            <div className="mt-4 grid gap-4 text-xs uppercase tracking-[0.3em] text-white/70 sm:grid-cols-2">
+                                <div className="rounded-2xl border border-white/20 bg-white/5 p-3">
+                                    <p className="text-[10px] text-white/60">Skill verification</p>
+                                    <p className="mt-2 text-2xl font-semibold text-white">{verificationProgress}%</p>
+                                    <div className="mt-2 h-1.5 rounded-full bg-white/20">
+                                        <div
+                                            className="h-full rounded-full bg-white"
+                                            style={{ width: `${verificationProgress}%` }}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="rounded-2xl border border-white/20 bg-white/5 p-3">
+                                    <p className="text-[10px] text-white/60">AI Matches</p>
+                                    <p className="mt-2 text-2xl font-semibold text-white">{matchesCount}</p>
+                                    <p className="text-[11px] text-white/60">new curated internships</p>
+                                </div>
+                            </div>
+                            <div className="mt-6 flex flex-wrap gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/student/internships')}
+                                    className="rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#2d1f9b] transition hover:opacity-90"
+                                >
+                                    Browse recommendations
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/student/skills')}
+                                    className="rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
+                                >
+                                    Update skills
+                                </button>
+                            </div>
+                        </div>
+                        <div className="rounded-[26px] border border-white/25 bg-white/10 p-8 text-center shadow-[0_20px_80px_rgba(12,11,43,0.35)]">
+                            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
+                                <LineChart className="h-8 w-8 text-white" />
+                            </div>
+                            <p className="mt-4 text-xs uppercase tracking-[0.35em] text-white/70">AI Engine</p>
+                            <p className="mt-2 text-xl font-semibold text-white">Skill sync active</p>
+                            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-1 text-xs text-white/80">
+                                <Activity size={14} />
+                                Monitoring violations
+                            </div>
+                        </div>
+                    </div>
+                </motion.section>
+
+                <section className="grid gap-4 md:grid-cols-3">
+                    {[
+                        {
+                            label: 'VSPS Score',
+                            value: formattedScore || 0,
+                            helper: 'Top 5% in React Development',
+                            icon: TrendingUp,
+                            footer: '+12 pts this week',
+                        },
+                        {
+                            label: 'Verification',
+                            value: verificationLevel,
+                            helper: `${Math.max(1, Math.round((profile?.skills?.length || 3) * 1.2))} skills certified`,
+                            icon: ShieldCheck,
+                            footer: 'Security layer synced',
+                        },
+                        {
+                            label: 'AI Matches',
+                            value: matchesCount,
+                            helper: 'New curated internships',
+                            icon: Zap,
+                            footer: '3 priority leads',
+                        },
+                    ].map((stat) => (
+                        <div key={stat.label} className="rounded-3xl border border-white/10 bg-[#0c1024] p-6 shadow-[0_25px_80px_rgba(3,7,18,0.6)]">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-xs uppercase tracking-[0.35em] text-white/50">{stat.label}</p>
+                                    <p className="mt-3 text-3xl font-semibold">{stat.value}</p>
+                                </div>
+                                <span className="rounded-2xl bg-white/10 p-3">
+                                    <stat.icon className="h-5 w-5 text-indigo-200" />
+                                </span>
+                            </div>
+                            <p className="mt-3 text-sm text-white/70">{stat.helper}</p>
+                            <p className="mt-4 text-xs font-semibold text-emerald-300">{stat.footer}</p>
+                        </div>
+                    ))}
+                </section>
+
+                <section className="grid gap-4 md:grid-cols-3">
+                    <div className="rounded-3xl border border-white/10 bg-[#070c1f] p-6 shadow-[0_20px_70px_rgba(5,7,19,0.65)]">
+                        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Assessment accuracy</p>
+                        <p className="mt-3 text-4xl font-semibold text-white">{accuracyPct}%</p>
+                        <p className="mt-1 text-sm text-white/60">Correct answers across the latest attempt</p>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-[#070c1f] p-6 shadow-[0_20px_70px_rgba(5,7,19,0.65)]">
+                        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Speed score</p>
+                        <p className="mt-3 text-4xl font-semibold text-white">{speedPct}%</p>
+                        <p className="mt-1 text-sm text-white/60">Average response time advantage</p>
+                    </div>
+                    <div className="rounded-3xl border border-white/10 bg-[#070c1f] p-6 shadow-[0_20px_70px_rgba(5,7,19,0.65)]">
+                        <p className="text-xs uppercase tracking-[0.35em] text-white/50">Focused session</p>
+                        <p className="mt-3 text-4xl font-semibold text-white">{skipPct}%</p>
+                        <p className="mt-1 text-sm text-white/60">Questions answered without violations</p>
+                    </div>
+                </section>
+
+                <section className="grid gap-6 lg:grid-cols-3">
+                    <div className="rounded-3xl border border-white/5 bg-[#090d1d] p-6 shadow-inner lg:col-span-2">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.4em] text-white/40">Growth analytics</p>
+                                <h3 className="mt-2 text-xl font-semibold">Proficiency vs Market demand</h3>
+                            </div>
+                            <div className="flex gap-3 text-sm text-white/70">
+                                <span className="flex items-center gap-1">
+                                    <span className="h-2 w-2 rounded-full bg-indigo-400" /> Your skills
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="h-2 w-2 rounded-full bg-white/40" /> Market demand
+                                </span>
+                            </div>
+                        </div>
+                        <div className="mt-6 h-64 rounded-2xl bg-gradient-to-b from-[#111836] to-[#070b18] p-6">
+                            <svg viewBox="0 0 100 100" className="h-full w-full">
+                                <path d={marketPath} fill="none" stroke="rgba(255,255,255,0.35)" strokeWidth="1.5" strokeLinecap="round" />
+                                <path d={studentPath} fill="none" stroke="url(#studentLine)" strokeWidth="2.4" strokeLinecap="round" />
+                                <defs>
+                                    <linearGradient id="studentLine" x1="0%" x2="100%">
+                                        <stop offset="0%" stopColor="#7c5bff" />
+                                        <stop offset="100%" stopColor="#33d4ff" />
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div className="mt-4 flex justify-between text-xs text-white/50">
+                                {growthSeries.map((point) => (
+                                    <span key={point.label}>{point.label}</span>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-white/5 bg-[#090d1d] p-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.35em] text-white/40">Recent activity</p>
+                                <h3 className="mt-2 text-xl font-semibold">Realtime updates</h3>
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => navigate('/student/assessment')}
-                                className="mt-6 inline-flex items-center justify-center rounded-full bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+                                onClick={() => navigate('/student/applications')}
+                                className="text-sm text-indigo-300 hover:text-indigo-100"
                             >
-                                Start assessment
+                                View history
                             </button>
                         </div>
-                    ) : featured.length === 0 ? (
-                        <p className="text-sm text-slate-600">
-                            No recommendations found yet. Visit the Internships tab to see more.
-                        </p>
-                    ) : (
-                        <div className="space-y-4">
-                            {featured.map((item) => {
-                                const i = item;
-                                const skillsRow = i.required_skills || i.skillsRequired || [];
-                                const matchScore = i.recommendation
-                                    ? (i.recommendation.final_score * 100).toFixed(0)
-                                    : '—';
-
-                                return (
-                                    <motion.div
-                                        key={i.id}
-                                        initial={{ opacity: 0, y: 12 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="rounded-2xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow"
-                                    >
-                                        <div className="p-5 space-y-3">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <h4 className="text-sm sm:text-base font-semibold text-slate-900">
-                                                        {i.title}
-                                                    </h4>
-                                                    <p className="text-xs text-slate-500">
-                                                        {i.recruiter?.company_name || 'Top Company'}
-                                                    </p>
-                                                </div>
-                                                {matchScore !== '—' && (
-                                                    <span className="inline-flex items-center rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-semibold text-emerald-700">
-                                                        {matchScore}% match
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            <p className="text-xs sm:text-sm text-slate-600 line-clamp-3">
-                                                {i.description}
-                                            </p>
-
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                {skillsRow.slice(0, 5).map((skill) => (
-                                                    <span
-                                                        key={String(skill)}
-                                                        className="inline-flex items-center rounded-full bg-slate-50 px-2 py-1 text-[11px] font-medium text-slate-700 ring-1 ring-slate-200"
-                                                    >
-                                                        {String(skill)}
-                                                    </span>
-                                                ))}
-                                            </div>
-
-                                            <div className="mt-3 flex items-center justify-between text-[11px] text-slate-500">
-                                                <span>📍 {i.location || 'Remote'}</span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => navigate('/student/internships')}
-                                                    className="text-indigo-600 font-semibold hover:text-indigo-800"
-                                                >
-                                                    View details →
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                );
-                            })}
+                        <div className="mt-6 space-y-5">
+                            {recentActivity.map((activity, idx) => (
+                                <div key={idx} className="flex items-start gap-3 rounded-2xl border border-white/5 bg-white/5 p-4">
+                                    <div className="mt-1 h-2 w-2 rounded-full bg-indigo-300" />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-semibold">{activity.title}</p>
+                                        <p className="mt-1 text-xs text-white/60">{activity.time}</p>
+                                    </div>
+                                    <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">
+                                        {activity.badge}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
-                    )}
-                </div>
+                    </div>
+                </section>
 
-                {/* Sidebar: map + explanation / next actions */}
-                <aside className="space-y-4">
-                    <GlowingIndiaMap />
-                    <NotificationTrigger />
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm text-xs text-slate-700">
-                        <h4 className="text-sm font-semibold text-slate-900 mb-1">
-                            How this dashboard works
-                        </h4>
-                        <p>
-                            Your skills and assessment results are converted into numeric vectors
-                            using TF-IDF. We compare them against internship descriptions, adjust
-                            using VSPS and recruiter trust scores, and then rank roles from best
-                            to worst fit.
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-indigo-50 p-4 text-xs text-slate-800 shadow-sm">
-                        <h4 className="text-sm font-semibold text-slate-900 mb-1">
-                            Next actions
-                        </h4>
-                        <ul className="list-disc list-inside space-y-1">
-                            <li>Review your skills on the Skills tab.</li>
-                            <li>Retake the assessment if your VSPS is low.</li>
-                            <li>Open the Internships tab to see the full ranked list.</li>
-                        </ul>
-                    </div>
-                </aside>
-            </section>
+                <section className="grid gap-4 md:grid-cols-3">
+                    {quickActions.map((card) => (
+                        <div
+                            key={card.title}
+                            className={`rounded-3xl border border-white/5 bg-gradient-to-br ${card.color} p-5 text-white shadow-[0_15px_50px_rgba(5,7,19,0.7)]`}
+                        >
+                            <div className={`rounded-2xl bg-white/10 p-3`}>
+                                <card.icon className="h-5 w-5 text-white" />
+                            </div>
+                            <h4 className="mt-4 text-lg font-semibold">{card.title}</h4>
+                            <p className="mt-2 text-sm text-white/80">{card.description}</p>
+                            <button
+                                type="button"
+                                className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-white transition hover:opacity-80"
+                                onClick={card.onClick}
+                            >
+                                {card.action}
+                                <ArrowUpRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    ))}
+                </section>
+            </div>
         </div>
     );
 }

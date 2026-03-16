@@ -1,7 +1,9 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from .models import ApplicantProfile, RecruiterProfile, Internship, Application
+from assessments.models import Skill
 from .serializers import ApplicantProfileSerializer, RecruiterProfileSerializer, InternshipSerializer, ApplicationSerializer
 from users.models import User
 
@@ -37,6 +39,28 @@ class ApplicantProfileViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data)
 
+    @action(detail=False, methods=['GET'], permission_classes=[permissions.AllowAny], url_path='suggest')
+    def suggest(self, request):
+        email = (request.query_params.get('email') or '').strip()
+        if not email:
+            return Response({'detail': 'Email query parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile, _ = ApplicantProfile.objects.get_or_create(user=user)
+        return Response(
+            {
+                'role': user.role,
+                'student_name': (user.get_full_name() or user.email),
+                'college': profile.college or '',
+                'degree': profile.degree or '',
+                'major': profile.major or '',
+                'interested_role': profile.interested_role or '',
+            }
+        )
+
 class RecruiterProfileViewSet(viewsets.ModelViewSet):
     serializer_class = RecruiterProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -54,6 +78,29 @@ class RecruiterProfileViewSet(viewsets.ModelViewSet):
         if request.user.role == User.Role.RECRUITER and 'is_verified' in request.data:
             return Response({'detail': 'Cannot verify yourself'}, status=status.HTTP_403_FORBIDDEN)
         return super().update(request, *args, **kwargs)
+
+    @action(detail=False, methods=['GET'], permission_classes=[permissions.AllowAny], url_path='suggest')
+    def suggest(self, request):
+        email = (request.query_params.get('email') or '').strip()
+        if not email:
+            return Response({'detail': 'Email query parameter is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'Profile not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        profile, _ = RecruiterProfile.objects.get_or_create(
+            user=user,
+            defaults={'company_name': user.first_name or user.email, 'company_website': ''},
+        )
+        return Response(
+            {
+                'role': user.role,
+                'company_name': profile.company_name or '',
+                'company_website': profile.company_website or '',
+                'is_verified': profile.is_verified,
+            }
+        )
 
     @action(detail=False, methods=['GET', 'PATCH'])
     def me(self, request):
@@ -81,8 +128,36 @@ class InternshipViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def perform_create(self, serializer):
-        recruiter_profile = RecruiterProfile.objects.get(user=self.request.user)
-        serializer.save(recruiter=recruiter_profile)
+        user = self.request.user
+        if user.role == User.Role.ADMIN:
+            recruiter_id = self.request.data.get('recruiter_id')
+            if not recruiter_id:
+                raise ValidationError({'recruiter_id': 'This field is required for admin-created listings.'})
+            try:
+                recruiter_profile = RecruiterProfile.objects.get(pk=recruiter_id)
+            except RecruiterProfile.DoesNotExist:
+                raise ValidationError({'recruiter_id': 'Recruiter not found.'})
+        else:
+            recruiter_profile = RecruiterProfile.objects.get(user=user)
+        instance = serializer.save(recruiter=recruiter_profile)
+        self._sync_skill_catalog(instance.required_skills)
+        return instance
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        self._sync_skill_catalog(instance.required_skills)
+
+    def _sync_skill_catalog(self, skills):
+        if not skills:
+            return
+        for skill in skills:
+            label = ''
+            if isinstance(skill, str):
+                label = skill.strip()
+            elif isinstance(skill, dict):
+                label = (skill.get('name') or '').strip()
+            if label:
+                Skill.objects.get_or_create(name=label)
 
     @action(detail=True, methods=['POST'])
     def apply(self, request, pk=None):
@@ -117,6 +192,45 @@ class InternshipViewSet(viewsets.ModelViewSet):
         applications = Application.objects.filter(internship=internship).order_by('-applicant__vsps_score')
         serializer = ApplicationSerializer(applications, many=True)
         return Response(serializer.data)
+
+class IsAdminPermission(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_authenticated and getattr(request.user, 'role', None) == User.Role.ADMIN
+
+
+class PlatformSettingsViewSet(viewsets.ViewSet):
+    permission_classes = [IsAdminPermission]
+
+    @action(detail=False, methods=['GET'], url_path='settings')
+    def get_settings(self, request):
+        """Get current platform settings"""
+        from .models import PlatformSettings
+        settings = PlatformSettings.get_settings()
+        return Response({
+            'enforce_2fa_for_admins_recruiters': settings.enforce_2fa_for_admins_recruiters,
+            'auto_approve_verified_recruiters': settings.auto_approve_verified_recruiters
+        })
+
+    @action(detail=False, methods=['PATCH'])
+    def update_settings(self, request):
+        """Update platform settings"""
+        from .models import PlatformSettings
+        settings = PlatformSettings.get_settings()
+        
+        enforce_2fa = request.data.get('enforce_2fa_for_admins_recruiters')
+        auto_approve = request.data.get('auto_approve_verified_recruiters')
+        
+        if enforce_2fa is not None:
+            settings.enforce_2fa_for_admins_recruiters = enforce_2fa
+        if auto_approve is not None:
+            settings.auto_approve_verified_recruiters = auto_approve
+            
+        settings.save()
+        
+        return Response({
+            'enforce_2fa_for_admins_recruiters': settings.enforce_2fa_for_admins_recruiters,
+            'auto_approve_verified_recruiters': settings.auto_approve_verified_recruiters
+        })
 
     @action(detail=False, methods=['GET'])
     def recommendations(self, request):
@@ -201,6 +315,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
                 return Application.objects.filter(internship__recruiter=user.recruiter_profile)
             except RecruiterProfile.DoesNotExist:
                 return Application.objects.none()
+        elif user.role == User.Role.ADMIN:
+            return Application.objects.select_related('internship', 'applicant').all()
         return Application.objects.none()
 
     def perform_update(self, serializer):

@@ -10,6 +10,8 @@ class User(AbstractUser):
 
     email = models.EmailField(_('email address'), unique=True)
     role = models.CharField(max_length=50, choices=Role.choices, default=Role.APPLICANT)
+    two_factor_enabled = models.BooleanField(default=False)
+    two_factor_secret = models.CharField(max_length=64, blank=True, null=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name', 'role']

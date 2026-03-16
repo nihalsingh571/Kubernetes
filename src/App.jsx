@@ -6,9 +6,14 @@ import StudentHome from './pages/StudentHome';
 import StudentProfile from './pages/StudentProfile';
 import StudentSkills from './pages/StudentSkills';
 import StudentInternships from './pages/StudentInternships';
+import StudentApplications from './pages/StudentApplications';
 import RecruiterDashboard from './pages/RecruiterDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import Assessment from './pages/Assessment'; // New Import
+import VerifyOtp from './pages/VerifyOtp';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import SecurityCenter from './pages/SecurityCenter';
 import { useAuth } from './context/AuthContext';
 
 // Protected Route Component
@@ -33,6 +38,17 @@ function App() {
         <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/verify-otp" element={<VerifyOtp />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route
+                path="/settings/security"
+                element={
+                    <ProtectedRoute allowedRoles={['APPLICANT', 'RECRUITER', 'ADMIN', 'STAFF']}>
+                        <SecurityCenter />
+                    </ProtectedRoute>
+                }
+            />
 
             {/* Student Routes */}
             <Route
@@ -48,6 +64,7 @@ function App() {
                 <Route path="profile" element={<StudentProfile />} />
                 <Route path="skills" element={<StudentSkills />} />
                 <Route path="internships" element={<StudentInternships />} />
+                <Route path="applications" element={<StudentApplications />} />
             </Route>
 
             {/* Assessment - Separate Layout for Proctoring */}
@@ -70,14 +87,7 @@ function App() {
                 }
             />
 
-            <Route
-                path="/admin"
-                element={
-                    <ProtectedRoute allowedRoles={['ADMIN', 'STAFF']}>
-                        <AdminDashboard />
-                    </ProtectedRoute>
-                }
-            />
+            <Route path="/admin" element={<AdminDashboard />} />
 
             {/* Default Redirect */}
             <Route path="/" element={<Navigate to="/login" replace />} />

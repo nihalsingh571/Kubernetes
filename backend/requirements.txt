@@ -7,3 +7,9 @@ numpy
 pandas
 django-cors-headers
 python-dotenv
+requests
+pyotp
+qrcode
+Pillow
+python-docx
+google-genai

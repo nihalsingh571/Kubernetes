@@ -21,6 +21,8 @@ InternConnect is a comprehensive platform designed to bridge the gap between stu
 -   **AI-Powered Recommendations**: Uses a custom Recommendation Engine (Cosine Similarity + VSPS Score) to match students with the best internships.
 -   **Verification System (VSPS)**: Verified Student Performance Score ensures recruiters see candidates verified for their skills.
 -   **Recruiter Dashboard**: Post internships, manage applications, and view candidates ranked by their VSPS score.
+-   **Recruiter Branding Controls**: Company name and website flow from signup straight into the dashboard, and can be edited instantly via the in-app modal—no API calls or admin panels required.
+-   **Admin Command Center**: Monitor student/recruiter growth, verify organizations, review internship quality, and toggle risk controls (2FA enforcement, auto-approval) from a single analytics-heavy dashboard.
 -   **Student Portal**: Take skill assessments, view recommended internships, and apply with one click.
 -   **Real-time Notifications**: Instant updates on application status (Planned).
 -   **Comprehensive Testing Framework**: 68 automated tests covering backend APIs, frontend components, E2E user journeys, and integration workflows.
