@@ -184,6 +184,8 @@ docker-compose up --build
 ### 📖 Documentation
 - [Testing Guide](TESTING.md) - Comprehensive testing documentation
 - [Features](FEATURES.md) - Detailed feature list and roadmap
+- [ML Model Alignment Guide](backend/ml_engine/ML_MODEL_DOCUMENTATION.txt) - Detailed technical breakdown of VSPS, Trust Score, and Ranking formulas
+
 
 <!-- CI/CD Trigger: 04/13/2026 01:56:17 -->
 
