@@ -15,7 +15,11 @@ from .serializers import (
     AssessmentSubmitSerializer,
 )
 from .utils import save_questions
-from .gemini_generator import generate_questions_with_gemini, generate_default_questions
+from .gemini_generator import (
+    generate_questions_with_gemini,
+    generate_default_questions,
+    determine_next_difficulty,
+)
 from core.models import ApplicantProfile
 from django.contrib.auth import get_user_model
 
@@ -131,9 +135,13 @@ class AssessmentViewSet(viewsets.ViewSet):
         user = request.user
         if not hasattr(user, 'applicant_profile'):
              return Response({"error": "Only applicants can take assessments"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         profile = user.applicant_profile
         raw_skills = profile.skills
+
+        # Determine adaptive difficulty from the candidate's last accuracy (proposal §7)
+        difficulty = determine_next_difficulty(profile.assessment_accuracy)
+
         # Extract names if skills are dicts
         user_skills = []
         for s in raw_skills:
@@ -141,15 +149,15 @@ class AssessmentViewSet(viewsets.ViewSet):
                 user_skills.append(s.get('name'))
             else:
                 user_skills.append(s)
-        
-        specific_skills = request.data.get('skills', []) # specific override
+
+        specific_skills = request.data.get('skills', [])
         if specific_skills:
            user_skills = specific_skills
 
         if not user_skills:
             return Response({"error": "No skills provided. Please add a skill first."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Find or bootstrap Skill objects (Case Insensitive)
+        # Find or bootstrap Skill objects (case-insensitive)
         skill_objs = []
         for s_name in user_skills:
             if not s_name:
@@ -161,16 +169,16 @@ class AssessmentViewSet(viewsets.ViewSet):
             if not skill_obj:
                 skill_obj = Skill.objects.create(name=normalized)
                 try:
-                    generated = generate_questions_with_gemini(normalized)
+                    generated = generate_questions_with_gemini(normalized, difficulty=difficulty)
                 except Exception:
-                    generated = generate_default_questions(normalized)
+                    generated = generate_default_questions(normalized, difficulty=difficulty)
                 save_questions(skill_obj, generated)
             skill_objs.append(skill_obj)
-        
+
         if not skill_objs:
              return Response({"error": f"No assessment available for skills: {', '.join(user_skills)}"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Select 10 random questions STRICTLY from these skills
+        # Select 10 random questions from these skills
         questions = list(Question.objects.filter(skill__in=skill_objs))
 
         if not questions:
@@ -179,11 +187,9 @@ class AssessmentViewSet(viewsets.ViewSet):
                 if Question.objects.filter(skill=skill).exists():
                     continue
                 try:
-                    new_questions = generate_questions_with_gemini(skill.name)
-                    generation_method = "AI"
+                    new_questions = generate_questions_with_gemini(skill.name, difficulty=difficulty)
                 except Exception:
-                    new_questions = generate_default_questions(skill.name)
-                    generation_method = "fallback"
+                    new_questions = generate_default_questions(skill.name, difficulty=difficulty)
                 save_questions(skill, new_questions)
                 regenerated = True
 
@@ -198,17 +204,13 @@ class AssessmentViewSet(viewsets.ViewSet):
         else:
             selected_questions = random.sample(questions, 10)
 
-        # Create Attempt
         attempt = AssessmentAttempt.objects.create(user=user)
         attempt.skills_assessed.set(skill_objs)
-        # Store selected question IDs in session or a temporary field?
-        # Ideally, we should store them in the Attempt model to verify answers later.
-        # Improv: Adding checks. For now, sending IDs to frontend and trusting frontend to send back answers for THOSE IDs.
-        # Security Note: A user could technically swap IDs if we don't validate, but for MVP trust is OK.
-        
+
         serializer = QuestionSerializer(selected_questions, many=True)
         return Response({
             "attempt_id": attempt.id,
+            "difficulty": difficulty,
             "questions": serializer.data
         })
 
@@ -217,7 +219,7 @@ class AssessmentViewSet(viewsets.ViewSet):
         serializer = AssessmentSubmitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
-        
+
         try:
             attempt = AssessmentAttempt.objects.get(id=data['attempt_id'], user=request.user)
         except AssessmentAttempt.DoesNotExist:
@@ -230,9 +232,9 @@ class AssessmentViewSet(viewsets.ViewSet):
                  "vsps": attempt.final_vsps or 0.0,
                  "message": "Assessment already submitted"
              })
-        
-        answers = data['answers'] # {q_id: option_idx}
-        time_taken = data['time_taken'] # {q_id: seconds}
+
+        answers = data['answers']          # {q_id: option_idx}
+        time_taken = data['time_taken']    # {q_id: seconds}
         proctoring_log = data['proctoring_log']
 
         profile = getattr(request.user, 'applicant_profile', None)
@@ -241,8 +243,21 @@ class AssessmentViewSet(viewsets.ViewSet):
         attempt.violation_log = proctoring_log
         attempt.violation_count = len(proctoring_log)
 
-        # 1. Proctoring Check
-        if attempt.violation_count > 0:
+        # --- Integrity Factor (proposal §3.2) -----------------------------------
+        # 1–2 violations: degrade score via IntegrityFactor multiplier
+        # 3+ violations:  FAIL immediately
+        violation_count = attempt.violation_count
+        if violation_count >= 3:
+            integrity_factor = 0.0   # will trigger FAIL below
+        elif violation_count == 2:
+            integrity_factor = 0.7
+        elif violation_count == 1:
+            integrity_factor = 0.85
+        else:
+            integrity_factor = 1.0
+        attempt.integrity_factor = max(0.7, integrity_factor) if integrity_factor > 0 else 1.0
+
+        if violation_count >= 3:
             attempt.status = 'FAILED'
             attempt.score = 0.0
             attempt.final_vsps = attempt.final_vsps or 0.0
@@ -250,24 +265,31 @@ class AssessmentViewSet(viewsets.ViewSet):
             if profile:
                 profile.assessment_accuracy = 0.0
                 profile.assessment_speed_score = 0.0
-                profile.skills = merge_skill_attempt_payload(profile.skills, assessed_skills, attempt, 0.0, attempt.final_vsps)
-                profile.save(update_fields=['assessment_accuracy', 'assessment_speed_score', 'skills'])
+                profile.integrity_factor = 0.7
+                profile.skills = merge_skill_attempt_payload(
+                    profile.skills, assessed_skills, attempt, 0.0, attempt.final_vsps
+                )
+                profile.save(update_fields=[
+                    'assessment_accuracy', 'assessment_speed_score',
+                    'integrity_factor', 'skills',
+                ])
             return Response({
                 "status": "FAILED",
                 "score": 0.0,
                 "vsps": attempt.final_vsps,
-                "message": "Proctoring violation detected. Please restart the assessment."
+                "message": "Proctoring violation limit exceeded. Assessment invalidated."
             })
 
-        # 2. Score Calculation
+        # --- Score & VSPS Calculation (proposal §3.2) ---------------------------
         correct_count = 0
         total_questions = len(answers)
         total_time = 0
-        
+        difficulty_weights = []
+
         if total_questions == 0:
-             attempt.status = 'FAILED'
-             attempt.save()
-             return Response({"status": "FAILED", "reason": "No answers provided."})
+            attempt.status = 'FAILED'
+            attempt.save()
+            return Response({"status": "FAILED", "reason": "No answers provided."})
 
         for q_id, option_idx in answers.items():
             try:
@@ -276,52 +298,106 @@ class AssessmentViewSet(viewsets.ViewSet):
                 if question.correct_option == option_value:
                     correct_count += 1
                 total_time += time_taken.get(str(q_id), 0)
+                # Collect difficulty weight for DifficultyScore
+                difficulty_weights.append(
+                    Question.DIFFICULTY_WEIGHTS.get(question.difficulty, 0.5)
+                )
             except Question.DoesNotExist:
                 continue
 
         accuracy = correct_count / total_questions
         avg_time = total_time / total_questions
-        
-        # 3. VSPS Calculation
-        # VSPS = (0.6 * accuracy) + (0.3 * speed_score) - (0.1 * skip_penalty)
-        # Speed Score: 1.0 if avg_time < 5s, 0.0 if > 20s. Linear in between.
-        # Speed = 1 - (avg_time - 5) / 15 clamped [0,1]
-        speed_score = 1.0 - max(0, min(1, (avg_time - 5) / 15))
-        
-        # Skip penalty (not implemented fully as frontend forces answers, assume 0 for now)
+
+        # Speed Score: 1.0 if avg_time < 5 s, 0.0 if > 20 s, linear in between
+        speed_score = 1.0 - max(0.0, min(1.0, (avg_time - 5) / 15))
+
+        # DifficultyScore (proposal §3.1)
+        difficulty_score = (
+            sum(difficulty_weights) / len(difficulty_weights)
+            if difficulty_weights else 0.5
+        )
+
+        # Skip penalty — frontend forces answers, so remains 0; kept for formula completeness
         skip_penalty = 0.0
 
-        raw_vsps = (0.6 * accuracy) + (0.3 * speed_score) - (0.1 * skip_penalty)
+        # Consistency (proposal §3.1): std-dev stability across last 3 completed attempts
+        past_accuracies = list(
+            AssessmentAttempt.objects.filter(
+                user=request.user,
+                status='COMPLETED',
+            ).order_by('-end_time').values_list('score', flat=True)[:3]
+        )
+        if len(past_accuracies) >= 2:
+            import statistics
+            consistency = max(0.0, 1.0 - statistics.stdev(past_accuracies))
+        else:
+            consistency = 0.5  # neutral for first/second attempt
+
+        # Recency Factor: use profile recency_score (set externally / by signal)
+        recency_factor = getattr(profile, 'recency_score', 1.0) if profile else 1.0
+
+        # Full VSPS formula (proposal §3.2)
+        base_performance = (
+            0.45 * accuracy
+            + 0.20 * speed_score
+            + 0.15 * difficulty_score
+            + 0.10 * consistency
+            + 0.10 * recency_factor
+        )
+        penalty = skip_penalty * 0.15
+        raw_vsps = (base_performance - penalty) * integrity_factor
         final_vsps = max(0.0, min(1.0, raw_vsps))
 
         attempt.score = accuracy
         attempt.speed_score = speed_score
+        attempt.difficulty_score = difficulty_score
+        attempt.integrity_factor = integrity_factor
         attempt.final_vsps = final_vsps
-        
-        if accuracy >= 0.6: # Pass threshold
+
+        if accuracy >= 0.6:  # Pass threshold
             attempt.status = 'COMPLETED'
             if profile:
                 profile.vsps_score = final_vsps
                 profile.assessment_accuracy = accuracy
                 profile.assessment_speed_score = speed_score
-                profile.skills = merge_skill_attempt_payload(profile.skills, assessed_skills, attempt, accuracy, final_vsps)
-                profile.save(update_fields=['vsps_score', 'assessment_accuracy', 'assessment_speed_score', 'skills'])
+                profile.assessment_difficulty_score = difficulty_score
+                profile.assessment_consistency = consistency
+                profile.integrity_factor = integrity_factor
+                profile.skills = merge_skill_attempt_payload(
+                    profile.skills, assessed_skills, attempt, accuracy, final_vsps
+                )
+                profile.save(update_fields=[
+                    'vsps_score', 'assessment_accuracy', 'assessment_speed_score',
+                    'assessment_difficulty_score', 'assessment_consistency',
+                    'integrity_factor', 'skills',
+                ])
             msg = "Assessment Passed!"
         else:
             attempt.status = 'FAILED'
             if profile:
                 profile.assessment_accuracy = accuracy
                 profile.assessment_speed_score = speed_score
-                profile.skills = merge_skill_attempt_payload(profile.skills, assessed_skills, attempt, accuracy, final_vsps)
-                profile.save(update_fields=['assessment_accuracy', 'assessment_speed_score', 'skills'])
+                profile.assessment_difficulty_score = difficulty_score
+                profile.assessment_consistency = consistency
+                profile.integrity_factor = integrity_factor
+                profile.skills = merge_skill_attempt_payload(
+                    profile.skills, assessed_skills, attempt, accuracy, final_vsps
+                )
+                profile.save(update_fields=[
+                    'assessment_accuracy', 'assessment_speed_score',
+                    'assessment_difficulty_score', 'assessment_consistency',
+                    'integrity_factor', 'skills',
+                ])
             msg = "Assessment Failed. Low accuracy."
 
         attempt.save()
-        
+
         return Response({
             "status": attempt.status,
             "score": accuracy,
             "vsps": final_vsps,
+            "difficulty": attempt.difficulty_score,
+            "integrity_factor": integrity_factor,
             "message": msg
         })
 

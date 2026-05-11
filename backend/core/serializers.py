@@ -14,7 +14,9 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'first_name', 'last_name', 'skills', 'college', 'degree', 'education', 'major', 'graduation_year',
                   'interested_role',
                   'assessment_accuracy', 'assessment_speed_score', 'assessment_skip_penalty',
-                  'vsps_score', 'recency_score', 'mobile_number', 'github_link', 'linkedin_link']
+                  'assessment_difficulty_score', 'assessment_consistency',
+                  'integrity_factor', 'vsps_score', 'recency_score',
+                  'mobile_number', 'github_link', 'linkedin_link']
         extra_kwargs = {
             'email': {'required': False},
             # degree/education are optional
@@ -90,6 +92,9 @@ class InternshipSerializer(serializers.ModelSerializer):
             'recruiter_name',
             'recruiter_email',
             'company_name',
+            # Trust Score fields (proposal §4)
+            'recruiter_rating',
+            'recency_score',
         ]
         read_only_fields = ['recruiter', 'created_at']
 

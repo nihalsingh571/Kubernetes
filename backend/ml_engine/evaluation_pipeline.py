@@ -605,7 +605,7 @@ def analysis_report(df: pd.DataFrame) -> str:
     ),
     (
       "- Trust scoring differentiates duplicate internships sharing identical text: "
-      "high-quality copies (rating ≥0.8) stay near the top, whereas low-quality clones "
+      "high-quality copies (rating >=0.8) stay near the top, whereas low-quality clones "
       "receive low recruiter ratings/recency, enabling the Proposed model to add "
       f"{proposed['NDCG@10'] - cosine['NDCG@10']:.3f} NDCG@10."
     ),

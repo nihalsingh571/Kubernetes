@@ -237,33 +237,51 @@ class PlatformSettingsViewSet(viewsets.ViewSet):
         user = request.user
         if user.role != User.Role.APPLICANT:
             return Response({"error": "Only applicants can get recommendations"}, status=status.HTTP_403_FORBIDDEN)
-        
+
         try:
             profile = user.applicant_profile
         except ApplicantProfile.DoesNotExist:
             return Response({"error": "Profile not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        from ml_engine.recommender import RecommendationEngine, CandidateProfile, MicroAssessment, Internship as MLInternship
-        
+        from ml_engine.recommender import (
+            RecommendationEngine, CandidateProfile, MicroAssessment,
+            Internship as MLInternship,
+        )
+
         skills_list = []
         for s in profile.skills:
             if isinstance(s, dict):
                 skills_list.append(s.get('name', ''))
             else:
                 skills_list.append(str(s))
-        
+
+        # Build MicroAssessment with all VSPS parameters (proposal §3.1)
         candidate = CandidateProfile(
             id=user.id,
             skills=skills_list,
             micro_assessment=MicroAssessment(
                 accuracy=profile.assessment_accuracy,
                 speed_score=profile.assessment_speed_score,
-                skip_penalty=profile.assessment_skip_penalty
+                skip_penalty=profile.assessment_skip_penalty,
+                difficulty_score=profile.assessment_difficulty_score,
+                consistency=profile.assessment_consistency,
+                recency_factor=profile.recency_score,
+                integrity_factor=profile.integrity_factor,
             ),
-            recency_score=profile.recency_score
+            recency_score=profile.recency_score,
         )
 
-        db_internships = Internship.objects.all()
+        # Compute completion_ratio for Trust Score (proposal §4.1)
+        total_applications = Application.objects.filter(applicant=profile).count()
+        completed_applications = Application.objects.filter(
+            applicant=profile, status__in=['ACCEPTED', 'REVIEWED']
+        ).count()
+        completion_ratio = (
+            completed_applications / total_applications
+            if total_applications > 0 else 0.5
+        )
+
+        db_internships = Internship.objects.select_related('recruiter').all()
         ml_internships = []
         internship_map = {}
 
@@ -272,30 +290,36 @@ class PlatformSettingsViewSet(viewsets.ViewSet):
                 id=i.id,
                 title=i.title,
                 description=i.description,
-                recruiter_rating=i.recruiter_rating,
-                recency_score=i.recency_score
+                recruiter_rating=i.recruiter_rating,       # now a real DB field
+                recency_score=i.recency_score,             # now a real DB field
+                is_verified=i.recruiter.is_verified,       # RecruiterProfile.is_verified
             )
             ml_internships.append(ml_i)
             internship_map[i.id] = i
 
         engine = RecommendationEngine()
-        results = engine.recommend(candidate, ml_internships)
+        results = engine.recommend(
+            candidate,
+            ml_internships,
+            completion_ratio=completion_ratio,
+        )
 
         response_data = []
         for res in results:
             ml_internship = res['internship']
             original_obj = internship_map.get(ml_internship.id)
-            if not original_obj: continue
+            if not original_obj:
+                continue
 
             i_data = self.get_serializer(original_obj).data
             i_data['recommendation'] = {
                 'final_score': res['final_score'],
                 'cosine_similarity': res['cosine_similarity'],
                 'vsps': res['vsps'],
-                'trust_score': res['trust_score']
+                'trust_score': res['trust_score'],
             }
             response_data.append(i_data)
-        
+
         return Response(response_data)
 
 

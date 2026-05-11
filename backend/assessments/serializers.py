@@ -17,7 +17,7 @@ class QuestionAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Question
-        fields = ['id', 'skill', 'skill_name', 'text', 'options', 'correct_option', 'created_at']
+        fields = ['id', 'skill', 'skill_name', 'text', 'options', 'correct_option', 'difficulty', 'created_at']
 
 class AssessmentAttemptSerializer(serializers.ModelSerializer):
     class Meta:
@@ -47,6 +47,9 @@ class AssessmentAttemptDetailSerializer(serializers.ModelSerializer):
             'violation_count',
             'violation_log',
             'speed_score',
+            # Extended VSPS fields (proposal §3.1)
+            'difficulty_score',
+            'integrity_factor',
         ]
 
     def get_user_name(self, obj):

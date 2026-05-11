@@ -1,0 +1,17 @@
+=== KUBEADM LAB - RECONNECT COMMANDS ===
+
+--- MASTER NODE ---
+ssh -i "C:\Users\Nihal Kumar\Downloads\k8s-new-lab.pem" ubuntu@13.206.85.117
+
+--- WORKER NODE ---
+ssh -i "C:\Users\Nihal Kumar\Downloads\k8s-new-lab.pem" ubuntu@35.154.159.248
+
+--- AFTER SSH INTO MASTER, RUN DEMO ---
+bash ~/demo.sh
+
+--- CHECK EVERYTHING IS STILL RUNNING ---
+kubectl get nodes
+kubectl get all -n weblab
+
+--- SSH KEY LOCATION ---
+C:\Users\Nihal Kumar\Downloads\k8s-new-lab.pem

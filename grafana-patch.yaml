@@ -1,0 +1,9 @@
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      isDefault: false
+      name: Prometheus
+      type: prometheus
+      url: http://prometheus-kube-prometheus-prometheus:9090

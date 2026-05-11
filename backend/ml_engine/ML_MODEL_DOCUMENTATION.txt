@@ -1,0 +1,543 @@
+================================================================================
+         InternConnect — ML Ranking Model (Complete Technical Documentation)
+================================================================================
+
+Author   : InternConnect Team
+Version  : 2.0 (Fully Aligned)
+Date     : 2026-05-12
+Location : backend/ml_engine/
+
+================================================================================
+1. OVERVIEW
+================================================================================
+
+The InternConnect recommendation system ranks students for recruiters using a
+multi-layer scoring framework rather than relying solely on keyword matching.
+
+The ranking process contains four major stages:
+
+    Stage 1 : Skill Matching Layer       (TF-IDF + Cosine Similarity)
+    Stage 2 : Assessment Performance     (VSPS)
+    Stage 3 : Trust & Verification       (Trust Score)
+    Stage 4 : Final Hybrid Ranking       (FinalScore)
+
+Final Formula:
+--------------
+
+    FinalScore = SemanticMatch x VSPS x TrustScore
+
+Where:
+    SemanticMatch = TF-IDF + cosine similarity score
+    VSPS          = Verified Skill Performance Score
+    TrustScore    = Credibility and verification reliability score
+
+All scores are normalised to the range:   0 <= Score <= 1
+
+
+================================================================================
+2. SEMANTIC MATCHING LAYER  (TF-IDF + Cosine Similarity)
+================================================================================
+
+Purpose:
+    Measures how well a student's verified skills match recruiter requirements.
+
+--------------------------------------------------------------------------------
+Step 1 — Build Candidate Skill Vector
+--------------------------------------------------------------------------------
+
+Example student profile:
+    Skills: Python, Django, REST API, Docker
+
+Example internship description:
+    "Looking for backend interns with Django and REST API experience."
+
+The candidate's skill list is joined into a single text string.
+The internship's title and description are concatenated into a single string.
+Both are fed into the TF-IDF vectorizer together.
+
+Implementation file: backend/ml_engine/recommender.py
+    -> CandidateProfile.skills_as_text()
+    -> Internship.text_for_vectorization()
+
+--------------------------------------------------------------------------------
+Step 2 — TF-IDF Vectorization
+--------------------------------------------------------------------------------
+
+The system converts text into weighted vectors using:
+
+    TF-IDF(t, d) = TF(t, d)  x  log( N / DF(t) )
+
+Where:
+    TF   = frequency of term t in document d
+    DF   = number of documents containing term t
+    N    = total number of documents
+
+This increases the importance of unique technical skills that appear in fewer
+job descriptions (e.g., "GraphQL" scores higher than "Python" across a corpus).
+
+Library used: sklearn.feature_extraction.text.TfidfVectorizer
+
+--------------------------------------------------------------------------------
+Step 3 — Cosine Similarity
+--------------------------------------------------------------------------------
+
+The similarity score between candidate vector A and internship vector B:
+
+    CosineSimilarity(A, B) = (A . B) / (||A|| * ||B||)
+
+Result interpretation:
+    1.0  = perfect skill match
+    0.0  = no overlap at all
+
+Implementation:
+    -> RecommendationEngine._build_tfidf()
+    -> sklearn.metrics.pairwise.cosine_similarity
+
+
+================================================================================
+3. VSPS — VERIFIED SKILL PERFORMANCE SCORE
+================================================================================
+
+Purpose:
+    Evaluates whether the student can actually perform the claimed skills.
+    Unlike traditional portals, InternConnect uses speed, correctness,
+    efficiency, consistency, freshness, and behavioral reliability.
+
+--------------------------------------------------------------------------------
+3.1 Parameters Used in VSPS
+--------------------------------------------------------------------------------
+
+    Parameter              | Meaning
+    -----------------------|---------------------------------------------------
+    Accuracy               | % correct answers in assessment
+    Speed                  | Time efficiency per question
+    DifficultyScore        | Average weight of questions answered (easy/med/hard)
+    Consistency            | Stability of accuracy across last 3 attempts
+    RecencyFactor          | Freshness of assessment (from profile recency_score)
+    SkipPenalty            | Penalty for skipped questions (skip_rate x 0.15)
+    IntegrityFactor        | Anti-cheating confidence multiplier (0.7 - 1.0)
+
+--------------------------------------------------------------------------------
+3.2 Detailed VSPS Formula
+--------------------------------------------------------------------------------
+
+    BasePerformance = (0.45 x Accuracy)
+                    + (0.20 x Speed)
+                    + (0.15 x DifficultyScore)
+                    + (0.10 x Consistency)
+                    + (0.10 x RecencyFactor)
+
+    Penalty = SkipRate x 0.15
+
+    VSPS = (BasePerformance - Penalty) x IntegrityFactor
+
+Notes on each parameter:
+
+    Accuracy:
+        correct_count / total_questions
+        Computed in: assessments/views.py -> submit()
+
+    Speed Score:
+        1.0 if avg_time_per_question < 5 seconds
+        0.0 if avg_time_per_question > 20 seconds
+        Linear interpolation in between:
+            speed_score = 1.0 - max(0, min(1, (avg_time - 5) / 15))
+
+    DifficultyScore:
+        Average of difficulty weights across answered questions.
+        Weights: easy = 0.5 | medium = 0.75 | hard = 1.0
+        Defined in: assessments/models.py -> Question.DIFFICULTY_WEIGHTS
+
+    Consistency:
+        Computed using standard deviation of accuracy across the last 3
+        completed attempts. Lower std dev = higher consistency.
+            consistency = max(0.0, 1.0 - stdev(last_3_accuracies))
+        Returns 0.5 (neutral) if fewer than 2 prior attempts exist.
+
+    RecencyFactor:
+        Taken from ApplicantProfile.recency_score (set externally, range 0-1).
+        A value of 1.0 means very recent assessment activity.
+
+    SkipPenalty:
+        skip_rate x 0.15
+        Currently 0.0 because the frontend forces an answer selection before
+        submission. Kept in the formula for future implementation.
+
+    IntegrityFactor (Proctoring Adjustment):
+        Based on proctoring violations detected during the assessment:
+            0  violations  -> IntegrityFactor = 1.00
+            1  violation   -> IntegrityFactor = 0.85
+            2  violations  -> IntegrityFactor = 0.70
+            3+ violations  -> FAIL  (assessment invalidated entirely)
+
+        This is a continuous multiplier, not a binary pass/fail — students
+        with minor violations receive a degraded (but non-zero) VSPS.
+
+--------------------------------------------------------------------------------
+3.3 Example VSPS Calculation
+--------------------------------------------------------------------------------
+
+    Parameter           | Value
+    --------------------|-------
+    Accuracy            | 0.85
+    Speed               | 0.70
+    DifficultyScore     | 0.80
+    Consistency         | 0.75
+    RecencyFactor       | 0.90
+    SkipRate            | 0.10
+    IntegrityFactor     | 0.95
+
+    BasePerformance = (0.45 x 0.85) + (0.20 x 0.70) + (0.15 x 0.80)
+                    + (0.10 x 0.75) + (0.10 x 0.90)
+                  = 0.3825 + 0.1400 + 0.1200 + 0.0750 + 0.0900
+                  = 0.8075
+
+    Penalty = 0.10 x 0.15 = 0.015
+
+    VSPS = (0.8075 - 0.015) x 0.95
+         = 0.7925 x 0.95
+         = 0.7529  (~= 0.752 as per proposal)
+
+Implementation file: backend/ml_engine/recommender.py
+    -> MicroAssessment.vsps()
+
+
+================================================================================
+4. TRUST SCORE CALCULATION
+================================================================================
+
+Purpose:
+    Measures whether the candidate and internship data are trustworthy.
+    Helps recruiters avoid fake resumes, outdated skills, and fraudulent
+    internship listings.
+
+--------------------------------------------------------------------------------
+4.1 Trust Score Parameters
+--------------------------------------------------------------------------------
+
+    Parameter               | Weight | Meaning
+    ------------------------|--------|--------------------------------------
+    RecruiterRating         | 0.25   | Platform quality score for recruiter
+    VerificationStatus      | 0.20   | 1.0 if verified, 0.5 if unverified
+    AssessmentIntegrity     | 0.15   | IntegrityFactor from latest assessment
+    Freshness               | 0.10   | Recency of assessment / listing
+    ResumeConsistency       | 0.10   | Consistency of accuracy across attempts
+    CompletionRatio         | 0.10   | Accepted+Reviewed / Total applications
+    EndorsementReliability  | 0.10   | Verified endorsements (default: 0.8)
+
+--------------------------------------------------------------------------------
+4.2 Trust Score Formula
+--------------------------------------------------------------------------------
+
+    TrustScore = (0.25 x RecruiterRating)
+               + (0.20 x VerificationStatus)
+               + (0.15 x AssessmentIntegrity)
+               + (0.10 x Freshness)
+               + (0.10 x ResumeConsistency)
+               + (0.10 x CompletionRatio)
+               + (0.10 x EndorsementReliability)
+
+Data sources for each parameter:
+
+    RecruiterRating:
+        Field: core/models.py -> Internship.recruiter_rating
+        Default: 0.7
+        Set by: Platform admin when verifying recruiters
+
+    VerificationStatus:
+        Field: core/models.py -> RecruiterProfile.is_verified (bool)
+        Converted: 1.0 if True, 0.5 if False
+        Used in: core/views.py -> recommendations()
+
+    AssessmentIntegrity:
+        Field: core/models.py -> ApplicantProfile.integrity_factor
+        Set by: assessments/views.py -> submit() based on proctoring violations
+
+    Freshness:
+        Field: core/models.py -> ApplicantProfile.recency_score
+        Range: 0-1 (1 = very recent activity)
+
+    ResumeConsistency:
+        Field: core/models.py -> ApplicantProfile.assessment_consistency
+        Computed: stdev of last 3 assessment accuracy scores
+
+    CompletionRatio:
+        Computed live in: core/views.py -> recommendations()
+            = count(status in ACCEPTED/REVIEWED) / count(all applications)
+        Default: 0.5 (neutral, when no applications exist)
+
+    EndorsementReliability:
+        Hardcoded: 0.8 (neutral/good default)
+        Note: No endorsement system is currently implemented.
+              This will be replaced once an endorsement feature is built.
+
+--------------------------------------------------------------------------------
+4.3 Example Trust Score Calculation
+--------------------------------------------------------------------------------
+
+    Parameter               | Value
+    ------------------------|------
+    RecruiterRating         | 0.90
+    VerificationStatus      | 1.00   (verified recruiter)
+    AssessmentIntegrity     | 0.95
+    Freshness               | 0.85
+    ResumeConsistency       | 0.80
+    CompletionRatio         | 0.75
+    EndorsementReliability  | 0.88
+
+    TrustScore = (0.25 x 0.90) + (0.20 x 1.00) + (0.15 x 0.95)
+               + (0.10 x 0.85) + (0.10 x 0.80) + (0.10 x 0.75)
+               + (0.10 x 0.88)
+             = 0.225 + 0.200 + 0.1425 + 0.085 + 0.080 + 0.075 + 0.088
+             = 0.8955  (~= 0.892 as per proposal)
+
+Implementation file: backend/ml_engine/recommender.py
+    -> TrustCalculator.compute_trust()
+    -> TrustParams dataclass
+
+
+================================================================================
+5. FINAL RECRUITER RANKING SCORE
+================================================================================
+
+The final ranking score shown to recruiters:
+
+    FinalScore = CosineSimilarity x VSPS x TrustScore
+
+All three components are normalised [0, 1], so the final score is also in [0, 1].
+
+--------------------------------------------------------------------------------
+5.1 Example Final Score
+--------------------------------------------------------------------------------
+
+    Component           | Score
+    --------------------|-------
+    CosineSimilarity    | 0.299
+    VSPS                | 0.710
+    TrustScore          | 0.921
+
+    FinalScore = 0.299 x 0.710 x 0.921
+               = 0.1954  (~= 0.195 as per proposal)
+
+Results are sorted in descending order of FinalScore.
+Each result also returns the individual breakdown scores so recruiters can
+understand WHY a student ranked where they did (Explainable AI).
+
+Implementation file: backend/ml_engine/recommender.py
+    -> RecommendationEngine.recommend()
+API endpoint:         GET /api/internships/recommendations/
+    Response fields: final_score, cosine_similarity, vsps, trust_score
+
+
+================================================================================
+6. GEMINI AI ADAPTIVE QUESTIONING
+================================================================================
+
+Purpose:
+    The system integrates Gemini AI to generate skill-specific assessment
+    questions and dynamically increases or decreases difficulty based on the
+    candidate's prior performance.
+
+--------------------------------------------------------------------------------
+6.1 Difficulty Levels
+--------------------------------------------------------------------------------
+
+    Level   | Trigger                  | Question Style
+    --------|--------------------------|-------------------------------------------
+    easy    | accuracy < 0.50          | Beginner/conceptual, fundamental knowledge
+    medium  | 0.50 <= accuracy <= 0.80 | Applied, scenario-based questions
+    hard    | accuracy > 0.80          | Complex multi-step, architectural trade-offs
+
+--------------------------------------------------------------------------------
+6.2 Difficulty Adaptation Logic
+--------------------------------------------------------------------------------
+
+    Function: determine_next_difficulty(last_accuracy)
+    File:     backend/assessments/gemini_generator.py
+
+    if last_accuracy > 0.80:
+        next_difficulty = 'hard'    # harder, scenario-based, higher VSPS weight
+
+    elif last_accuracy < 0.50:
+        next_difficulty = 'easy'    # easier, conceptual fundamentals
+
+    else:
+        next_difficulty = 'medium'  # applied scenarios
+
+    First attempt (accuracy = 0.0 default):  -> 'easy'
+
+The selected difficulty level is:
+    1. Passed to Gemini API via a tailored prompt
+    2. Stored in Question.difficulty for each generated question
+    3. Used to compute DifficultyScore during assessment submission
+    4. Returned to the frontend in the /assessments/start/ response
+
+--------------------------------------------------------------------------------
+6.3 Difficulty Weights in VSPS
+--------------------------------------------------------------------------------
+
+    Difficulty  | DifficultyScore Weight
+    ------------|------------------------
+    easy        | 0.5
+    medium      | 0.75
+    hard        | 1.0
+
+    DifficultyScore = average of all weights for questions answered in the attempt
+
+    Stored in: AssessmentAttempt.difficulty_score
+               ApplicantProfile.assessment_difficulty_score
+
+
+================================================================================
+7. DATABASE FIELDS SUPPORTING THE MODEL
+================================================================================
+
+--------------------------------------------------------------------------------
+ApplicantProfile (core/models.py)
+--------------------------------------------------------------------------------
+
+    Field                       | Type    | Purpose
+    ----------------------------|---------|-------------------------------------
+    assessment_accuracy         | Float   | Raw accuracy from latest assessment
+    assessment_speed_score      | Float   | Speed score from latest assessment
+    assessment_skip_penalty     | Float   | Skip rate (currently 0.0)
+    assessment_difficulty_score | Float   | Avg difficulty weight (VSPS param)
+    assessment_consistency      | Float   | Stability across last 3 attempts
+    integrity_factor            | Float   | Proctoring confidence (0.7-1.0)
+    vsps_score                  | Float   | Final computed VSPS
+    recency_score               | Float   | Activity freshness (0-1)
+
+--------------------------------------------------------------------------------
+Internship (core/models.py)
+--------------------------------------------------------------------------------
+
+    Field           | Type    | Purpose
+    ----------------|---------|------------------------------------------------
+    recruiter_rating| Float   | Platform quality score for this recruiter (0-1)
+    recency_score   | Float   | Freshness of the internship listing (0-1)
+
+--------------------------------------------------------------------------------
+RecruiterProfile (core/models.py)
+--------------------------------------------------------------------------------
+
+    Field       | Type    | Purpose
+    ------------|---------|----------------------------------------------------
+    is_verified | Bool    | Platform verification status -> VerificationStatus
+
+--------------------------------------------------------------------------------
+Question (assessments/models.py)
+--------------------------------------------------------------------------------
+
+    Field       | Type    | Purpose
+    ------------|---------|----------------------------------------------------
+    difficulty  | Char    | Difficulty tier: 'easy' / 'medium' / 'hard'
+
+--------------------------------------------------------------------------------
+AssessmentAttempt (assessments/models.py)
+--------------------------------------------------------------------------------
+
+    Field            | Type  | Purpose
+    -----------------|-------|--------------------------------------------------
+    score            | Float | Raw accuracy for this attempt
+    speed_score      | Float | Speed score for this attempt
+    difficulty_score | Float | Avg difficulty weight for this attempt
+    integrity_factor | Float | Proctoring multiplier applied to this attempt
+    final_vsps       | Float | Computed VSPS for this attempt
+    violation_count  | Int   | Number of proctoring violations detected
+    violation_log    | JSON  | Detailed list of violation events
+
+
+================================================================================
+8. MODEL EVALUATION RESULTS
+================================================================================
+
+Evaluation is run via:   python -m ml_engine.evaluation_pipeline
+
+Synthetic dataset:   100 students x 100 internships
+Noise conditions:    30% noise, 10% duplicates, 20% misleading descriptions
+
+Results (from latest run):
+
+    Model             | Precision@5 | Precision@10 | NDCG@5 | NDCG@10
+    ------------------|-------------|--------------|--------|--------
+    Keyword Baseline  |    0.219    |    0.230     |  0.299 |  0.377
+    Cosine Only       |    0.376    |    0.316     |  0.611 |  0.645
+    Proposed Model    |    0.386    |    0.320     |  0.652 |  0.669
+
+    Best model: Proposed Model (NDCG@10 = 0.669)
+
+Ablation Study (NDCG@5):
+
+    Model             | NDCG@5
+    ------------------|-------
+    Cosine Only       |  0.611
+    Cosine + VSPS     |  0.611
+    Full Model        |  0.652
+
+Key findings:
+    - VSPS alone does not improve ranking (it scales all scores uniformly)
+    - Trust Score is the key differentiator: it separates duplicate internships
+      with identical text by recruiter quality
+    - Proposed model outperforms cosine-only by +0.024 NDCG@10 under noise
+
+Charts generated in:  backend/res/
+    evaluation_metrics.png   — Bar chart of all metrics
+    precision_at_k.png       — Precision@5 and @10 line chart
+    ndcg_at_k.png            — NDCG@5 and @10 line chart
+    proposed_improvement.png — % improvement over cosine-only
+    ablation_study.png       — Ablation NDCG@5 bars
+    noise_robustness.png     — NDCG@10 vs noise level (0% to 30%)
+
+
+================================================================================
+9. WHY THIS MODEL IS STRONG
+================================================================================
+
+    Advantage               | Explanation
+    ------------------------|---------------------------------------------------
+    Interpretable           | Every score component is individually returned in
+                            | the API response. Recruiters can see WHY a student
+                            | ranked high (cosine, vsps, trust breakdown).
+    Lightweight             | No GPU or deep learning required. Runs on CPU
+                            | using scikit-learn TF-IDF + cosine similarity.
+    Explainable AI          | Every score is mathematically derivable from raw
+                            | inputs. No black-box decisions.
+    Trust-Aware             | Fake profiles cannot rank high: low integrity factor
+                            | collapses both VSPS and Trust Score.
+    Personalized            | Strong students benefit from higher difficulty
+                            | assessments that yield higher DifficultyScore.
+    Adaptive                | Gemini AI generates harder questions for high
+                            | performers and easier questions for beginners.
+    Noise-Robust            | Trust Score penalises low-quality listings even
+                            | when textual overlap (cosine) is high.
+
+
+================================================================================
+10. FILE MAP
+================================================================================
+
+    File                              | Role
+    ----------------------------------|------------------------------------------
+    ml_engine/recommender.py          | Core engine: MicroAssessment, TrustParams,
+                                      | TrustCalculator, RecommendationEngine
+    ml_engine/evaluation_pipeline.py  | Synthetic benchmark: 100 students x 100
+                                      | internships, Keyword/Cosine/Proposed models
+    assessments/gemini_generator.py   | Gemini question generation + adaptive
+                                      | difficulty via determine_next_difficulty()
+    assessments/views.py              | Assessment start (adaptive difficulty) +
+                                      | submit (full VSPS formula + integrity)
+    assessments/utils.py              | save_questions() — saves difficulty field
+    assessments/models.py             | Question (difficulty), AssessmentAttempt
+                                      | (difficulty_score, integrity_factor)
+    core/views.py                     | recommendations() — builds CandidateProfile
+                                      | with all 7 Trust Score params + live data
+    core/models.py                    | ApplicantProfile (VSPS fields),
+                                      | Internship (recruiter_rating, recency_score)
+    core/serializers.py               | Exposes all new fields via REST API
+    assessments/serializers.py        | Exposes difficulty, integrity_factor in
+                                      | AssessmentAttemptDetailSerializer
+
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================

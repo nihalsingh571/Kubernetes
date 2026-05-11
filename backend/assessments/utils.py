@@ -81,17 +81,19 @@ def parse_questions_from_docx(doc):
 
 
 def save_questions(skill, questions):
-    """
-    Save a list of questions to the database for a given skill.
+    """Save a list of questions to the database for a given skill.
 
     Args:
-        skill: The Skill instance
-        questions: List of question dictionaries with 'text', 'options', 'correct_option'
+        skill: The Skill instance.
+        questions: List of question dicts with 'text', 'options', 'correct_option',
+                   and optionally 'difficulty' (easy/medium/hard).
     """
     for question_data in questions:
         Question.objects.create(
             skill=skill,
             text=question_data['text'],
             options=question_data['options'],
-            correct_option=question_data['correct_option']
+            correct_option=question_data['correct_option'],
+            difficulty=question_data.get('difficulty', 'easy'),
         )
+

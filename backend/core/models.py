@@ -15,10 +15,29 @@ class ApplicantProfile(models.Model):
     assessment_accuracy = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     assessment_speed_score = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
     assessment_skip_penalty = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
-    
+
+    # VSPS extended parameters (proposal §3.1)
+    assessment_difficulty_score = models.FloatField(
+        default=0.5,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Avg difficulty weight of questions answered (easy=0.5, medium=0.75, hard=1.0)",
+    )
+    assessment_consistency = models.FloatField(
+        default=0.5,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Stability of accuracy across the last 3 assessment attempts",
+    )
+
+    # Proctoring integrity multiplier for Trust Score (proposal §3.2)
+    integrity_factor = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Anti-cheating confidence: 1.0=clean, 0.7=multiple violations",
+    )
+
     # Computed VSPS
     vsps_score = models.FloatField(default=0.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
-    
+
     # Recency of activity (normalized 0-1)
     recency_score = models.FloatField(default=1.0, validators=[MinValueValidator(0.0), MaxValueValidator(1.0)])
 
@@ -61,6 +80,18 @@ class Internship(models.Model):
     deadline = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='OPEN')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Trust Score parameters (proposal §4)
+    recruiter_rating = models.FloatField(
+        default=0.7,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Platform-assigned recruiter quality score (0–1)",
+    )
+    recency_score = models.FloatField(
+        default=1.0,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Freshness of this internship listing (1=very recent)",
+    )
 
 class PlatformSettings(models.Model):
     """Global platform settings"""
