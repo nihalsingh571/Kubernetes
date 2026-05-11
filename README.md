@@ -1,5 +1,7 @@
 # InternConnect - Intelligent Internship Recommendation System
 
+<!-- Completed by Nihal Kumar Singh and Anjali sinha -->
+
 InternConnect is a comprehensive platform designed to bridge the gap between students and recruiters. It leverages machine learning to provide personalized internship recommendations based on candidate skills, assessment performance, and verification scores (VSPS).
 
 > **🟢 Live Production URL:** [http://k8s-internco-internco-c15f7fe546-2113075165.ap-south-1.elb.amazonaws.com](http://k8s-internco-internco-c15f7fe546-2113075165.ap-south-1.elb.amazonaws.com)
@@ -185,6 +187,7 @@ docker-compose up --build
 - [Testing Guide](TESTING.md) - Comprehensive testing documentation
 - [Features](FEATURES.md) - Detailed feature list and roadmap
 - [ML Model Alignment Guide](backend/ml_engine/ML_MODEL_DOCUMENTATION.txt) - Detailed technical breakdown of VSPS, Trust Score, and Ranking formulas
+- [Credits](CREDITS.md) - Project contributors
 
 
 <!-- CI/CD Trigger: 04/13/2026 01:56:17 -->

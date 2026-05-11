@@ -1,5 +1,7 @@
 # InternConnect - Comprehensive Feature Analysis
 
+<!-- Completed by Nihal Kumar Singh and Anjali sinha -->
+
 ## Overview
 InternConnect is an intelligent internship recommendation platform that connects students and recruiters through AI-powered matching, skill verification, and comprehensive dashboards. Built with modern web technologies and DevOps practices.
 

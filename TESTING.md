@@ -1,5 +1,7 @@
 # InternConnect Testing Guide
 
+<!-- Completed by Nihal Kumar Singh and Anjali sinha -->
+
 ## Overview
 InternConnect has a comprehensive testing framework covering backend (Django/pytest), frontend (React/Jest), E2E (Playwright), integration tests, and CI/CD automation. The framework ensures code quality, reliability, and automated deployment validation.
 
