@@ -142,8 +142,8 @@ python -m pytest core/test_integration.py -v
 
 1.  **Clone the repository**
     ```bash
-    git clone https://github.com/nihalsingh571/internrecom.git
-    cd internrecom
+    git clone https://github.com/nihalsingh571/Kubernetes.git
+    cd Kubernetes
     ```
 
 2.  **Backend Setup**
