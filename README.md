@@ -1,8 +1,8 @@
-# InternConnect - Intelligent Internship Recommendation System
+# CareerLite - Intelligent Internship Recommendation System
 
 <!-- Completed by Nihal Kumar Singh and Anjali sinha -->
 
-InternConnect is a comprehensive platform designed to bridge the gap between students and recruiters. It leverages machine learning to provide personalized internship recommendations based on candidate skills, assessment performance, and verification scores (VSPS).
+CareerLite is a comprehensive platform designed to bridge the gap between students and recruiters. It leverages machine learning to provide personalized internship recommendations based on candidate skills, assessment performance, and verification scores (VSPS).
 
 > **🟢 Live Production URL:** [http://k8s-internco-internco-c15f7fe546-2113075165.ap-south-1.elb.amazonaws.com](http://k8s-internco-internco-c15f7fe546-2113075165.ap-south-1.elb.amazonaws.com)
 
@@ -96,7 +96,7 @@ We leverage **Prometheus** and **Grafana** to achieve complete observability of 
 
 ## 🧪 Testing Framework
 
-InternConnect includes a comprehensive testing suite ensuring code quality and reliability across all layers.
+CareerLite includes a comprehensive testing suite ensuring code quality and reliability across all layers.
 
 ### Test Coverage
 - **Backend**: 33 tests (pytest + Django) - 60%+ API coverage
