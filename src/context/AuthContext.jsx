@@ -90,9 +90,20 @@ export const AuthProvider = ({ children }) => {
                 ...sessionResult,
                 twoFactorSetupRequired: Boolean(response.data?.two_factor_setup_required),
                 twoFactorSetupDetail: response.data?.detail,
+                recruiterApprovalStatus: response.data?.recruiter_approval_status || null,
+                detail: response.data?.detail || null,
             };
         } catch (error) {
-            const detail = error.response?.data?.detail;
+            const responseData = error.response?.data || {};
+            const detail = responseData.detail || responseData.message;
+            if (responseData.type) {
+                return {
+                    success: false,
+                    type: responseData.type,
+                    error: detail || 'Login failed',
+                    message: responseData.message || detail,
+                };
+            }
             if (error.response?.status === 403 && detail?.toLowerCase().includes('two-factor authentication is required')) {
                 return {
                     success: false,
@@ -119,6 +130,7 @@ export const AuthProvider = ({ children }) => {
 
     const signup = async (userData) => {
         try {
+            console.log('signup request payload', userData);
             await API.post('/auth/users/', userData);
             return { success: true };
         } catch (error) {
@@ -137,6 +149,18 @@ export const AuthProvider = ({ children }) => {
             return { success: false, error: error.response?.data?.detail || 'Verification failed' };
         }
     };
+
+    const loginWithTokens = useCallback(
+        async (access, refresh) => {
+            if (!access || !refresh) {
+                return { success: false, error: 'Missing authentication tokens.' };
+            }
+            localStorage.setItem('access_token', access);
+            localStorage.setItem('refresh_token', refresh);
+            return finalizeAuthenticatedSession();
+        },
+        [finalizeAuthenticatedSession]
+    );
 
     const startTwoFactorSetup = async () => {
         try {
@@ -186,6 +210,7 @@ export const AuthProvider = ({ children }) => {
                 logout,
                 socialLogin,
                 verifyLoginOtp,
+                loginWithTokens,
                 startTwoFactorSetup,
                 confirmTwoFactorSetup,
                 disableTwoFactor,

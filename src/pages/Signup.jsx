@@ -61,6 +61,8 @@ export default function Signup() {
     companySize: '',
     roleTitle: '',
     companyLocation: '',
+    companyDescription: '',
+    phoneNumber: '',
   })
   const [twoFactor, setTwoFactor] = useState(false)
   const [termsAccepted, setTermsAccepted] = useState(false)
@@ -151,10 +153,10 @@ export default function Signup() {
   const handleChange = (e) => {
     const { name, files, value } = e.target
     if (name === 'resume') {
-      setFormData({ ...formData, resume: files?.[0] || null })
+      setFormData((prev) => ({ ...prev, resume: files?.[0] || null }))
       return
     }
-    setFormData({ ...formData, [name]: value })
+    setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
   const handleRoleSelect = (value) => {
@@ -186,7 +188,10 @@ export default function Signup() {
           !formData.industry ||
           !formData.companySize ||
           !formData.roleTitle.trim() ||
-          !formData.companyLocation.trim()
+          !formData.companyLocation.trim() ||
+          !formData.companyDescription.trim() ||
+          !formData.phoneNumber.trim() ||
+          !formData.linkedin.trim()
         ) {
           return { valid: false, message: 'Complete your company info to continue.' }
         }
@@ -220,17 +225,48 @@ export default function Signup() {
 
     if (isLastStep) {
       let recruiterProfilePayload = null
+      let studentProfilePayload = null
       if (!isStudent) {
         recruiterProfilePayload = {
           company_name: formData.companyName.trim(),
           company_website: formData.companyWebsite.trim(),
+          designation: formData.roleTitle.trim(),
+          company_linkedin: formData.linkedin.trim(),
+          company_description: formData.companyDescription.trim(),
+          phone_number: formData.phoneNumber.trim(),
+          company_size: formData.companySize.trim(),
+          industry: formData.industry.trim(),
+          company_location: formData.companyLocation.trim(),
         }
         try {
           sessionStorage.setItem('pendingRecruiterProfile', JSON.stringify(recruiterProfilePayload))
         } catch (storageError) {
           console.warn('Unable to store recruiter profile draft locally', storageError)
         }
+      } else {
+        studentProfilePayload = new FormData()
+        studentProfilePayload.append('university_email', formData.universityEmail.trim())
+        studentProfilePayload.append('university', formData.university.trim())
+        studentProfilePayload.append('degree', formData.degree.trim())
+        studentProfilePayload.append('major', formData.major.trim())
+        studentProfilePayload.append('graduation_year', formData.graduationYear)
+        studentProfilePayload.append('interested_role', formData.interestedRole.trim())
+        studentProfilePayload.append(
+          'skills',
+          JSON.stringify(
+            formData.skills
+              .split(',')
+              .map((skill) => skill.trim())
+              .filter(Boolean),
+          ),
+        )
+        studentProfilePayload.append('github', formData.portfolio.trim())
+        studentProfilePayload.append('linkedin', formData.linkedin.trim())
+        if (formData.resume) {
+          studentProfilePayload.append('resume', formData.resume)
+        }
       }
+      console.log('signup complete formData', formData)
       setIsSubmitting(true)
       const res = await signup({
         email: formData.email,
@@ -241,18 +277,43 @@ export default function Signup() {
         last_name: formData.last_name,
         role: formData.role,
         agree_terms: termsAccepted,
+        company_name: recruiterProfilePayload?.company_name,
+        company_website: recruiterProfilePayload?.company_website,
+        designation: recruiterProfilePayload?.designation,
+        company_linkedin: recruiterProfilePayload?.company_linkedin,
+        company_description: recruiterProfilePayload?.company_description,
+        phone_number: recruiterProfilePayload?.phone_number,
+        company_size: recruiterProfilePayload?.company_size,
+        industry: recruiterProfilePayload?.industry,
+        company_location: recruiterProfilePayload?.company_location,
       })
       setIsSubmitting(false)
       if (res.success) {
         sessionStorage.removeItem(SIGNUP_PROGRESS_KEY)
+        if (!isStudent) {
+          sessionStorage.removeItem('pendingRecruiterProfile')
+          setFeedback({
+            type: 'success',
+            message: 'Recruiter account created. Admin verification is required before email OTP and login access.',
+          })
+          navigate('/login')
+          return
+        }
         setFeedback({ type: 'success', message: 'Account created! Taking you to your dashboard…' })
         const autoLogin = await login(formData.email, formData.password, null)
-        if (autoLogin.success && recruiterProfilePayload) {
+        if (autoLogin.success && studentProfilePayload) {
           try {
-            await API.patch('/api/recruiters/me/', recruiterProfilePayload)
-            sessionStorage.removeItem('pendingRecruiterProfile')
+            console.log('student onboarding payload', Object.fromEntries(studentProfilePayload.entries()))
+            await API.patch('/api/applicants/me/', studentProfilePayload, {
+              headers: { 'Content-Type': 'multipart/form-data' },
+            })
           } catch (profileSyncError) {
-            console.warn('Unable to sync recruiter company info during signup', profileSyncError)
+            console.warn('Unable to sync student onboarding data during signup', profileSyncError)
+            setFeedback({
+              type: 'warning',
+              message: 'Account created, but your student profile could not be saved. Open Profile and save it again.',
+            })
+            return
           }
         }
         if (!autoLogin.success) {
@@ -614,6 +675,15 @@ export default function Signup() {
                 required: true,
               })}
               {renderInput({
+                name: 'companyDescription',
+                label: 'Company Description',
+                type: 'textarea',
+                placeholder: 'What does the company do, and what team is hiring?',
+                fullWidth: true,
+                rows: 4,
+                required: true,
+              })}
+              {renderInput({
                 name: 'industry',
                 label: 'Industry',
                 type: 'select',
@@ -644,6 +714,20 @@ export default function Signup() {
                 name: 'companyLocation',
                 label: 'Company Location',
                 placeholder: 'Bengaluru, India',
+                fullWidth: true,
+                required: true,
+              })}
+              {renderInput({
+                name: 'phoneNumber',
+                label: 'Phone Number',
+                placeholder: '+91 98765 43210',
+                fullWidth: true,
+                required: true,
+              })}
+              {renderInput({
+                name: 'linkedin',
+                label: 'Company / Recruiter LinkedIn',
+                placeholder: 'https://linkedin.com/company/acme',
                 fullWidth: true,
                 required: true,
               })}
