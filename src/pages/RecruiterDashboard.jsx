@@ -1331,7 +1331,7 @@ export default function RecruiterDashboard() {
       <FeedbackToast feedback={pageFeedback} onClose={() => setPageFeedback(null)} />
       <div className="flex min-h-screen">
         <aside className="hidden w-72 flex-shrink-0 flex-col border-r border-white/5 bg-[#050a1c]/80 px-6 py-8 backdrop-blur lg:flex">
-          <div className="text-xl font-semibold tracking-wide">InternConnect</div>
+          <div className="text-xl font-semibold tracking-wide">CareerLite</div>
           <nav className="mt-10 space-y-2 text-sm font-semibold">
             {navLinks.map((link) => (
               <button
