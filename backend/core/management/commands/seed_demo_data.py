@@ -240,8 +240,9 @@ class Command(BaseCommand):
         for recruiter in recruiter_profiles:
             # Recruiter invites a random student
             student = random.choice(student_profiles)
-            intship = random.choice([i for i in internships if i.recruiter == recruiter])
-            if intship:
+            recruiter_internships = [i for i in internships if i.recruiter == recruiter]
+            if recruiter_internships:
+                intship = random.choice(recruiter_internships)
                 InternshipInvitation.objects.create(
                     recruiter=recruiter.user,
                     student=student.user,
