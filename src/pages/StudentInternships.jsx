@@ -546,7 +546,7 @@ export default function StudentInternships() {
                 <h3 className="text-lg font-semibold text-white">About the role</h3>
                 <p className="mt-3 text-sm text-white/70">
                   {selectedInternship.description ||
-                    'InternConnect curated description is not available. Expect a fast-paced environment building production-grade features.'}
+                    'CareerLite curated description is not available. Expect a fast-paced environment building production-grade features.'}
                 </p>
                 {normalizeList(selectedInternship.responsibilities).length > 0 && (
                   <>
@@ -595,7 +595,7 @@ export default function StudentInternships() {
                 <h3 className="text-lg font-semibold text-white">Company information</h3>
                 <p className="mt-3 text-sm text-white/70">
                   {selectedInternship.recruiter?.company_description ||
-                    `${selectedInternship.recruiter?.company_name || 'This organization'} partners with InternConnect to run high-impact internship programs.`}
+                    `${selectedInternship.recruiter?.company_name || 'This organization'} partners with CareerLite to run high-impact internship programs.`}
                 </p>
                 <dl className="mt-4 space-y-1 text-sm text-white/70">
                   <div className="flex justify-between">

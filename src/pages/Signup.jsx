@@ -10,7 +10,7 @@ import logo from '../../res/logo.png'
 import { TermsCard } from './Terms'
 import { PrivacyCard } from './Privacy'
 
-const SIGNUP_PROGRESS_KEY = 'internconnect_signup_progress'
+const SIGNUP_PROGRESS_KEY = 'CareerLite_signup_progress'
 
 const steps = [
   { id: 1, label: 'Account' },
@@ -479,7 +479,7 @@ export default function Signup() {
                 type="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder={isStudent ? 'you@internconnect.ai' : 'you@company.com'}
+                placeholder={isStudent ? 'you@careerlite.ai' : 'you@company.com'}
                 required
                 className="mt-2 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/30 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
               />
@@ -814,10 +814,10 @@ export default function Signup() {
           <div className="inline-flex items-center gap-3 rounded-full border border-white/10 bg-[#0b0e20]/80 px-5 py-2 text-sm text-white/80 shadow-[0_10px_25px_rgba(4,5,12,0.5)]">
             {/* {logo ? (
               <span className="rounded-2xl border border-white/10 bg-white/5 p-1">
-                <img src={logo} alt="InternConnect" className="h-7 w-7 rounded-xl object-contain" />
+                <img src={logo} alt="CareerLite" className="h-7 w-7 rounded-xl object-contain" />
               </span>
             ) : null} */}
-            <span className="font-semibold tracking-wide text-indigo-100">InternConnect</span>
+            <span className="font-semibold tracking-wide text-indigo-100">CareerLite</span>
           </div>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-white">Join the Future of Internships</h1>
           <p className="mt-3 text-base text-white/70">
@@ -860,7 +860,7 @@ export default function Signup() {
         >
           <div className="text-center">
             <p className="text-sm uppercase tracking-[0.35em] text-white/50">Choose your path</p>
-            <h2 className="mt-3 text-2xl font-semibold text-white">Select how you want to use InternConnect</h2>
+            <h2 className="mt-3 text-2xl font-semibold text-white">Select how you want to use CareerLite</h2>
             <p className="mt-1 text-sm text-white/60">We&apos;ll personalize your journey based on your role.</p>
           </div>
 

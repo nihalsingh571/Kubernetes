@@ -251,7 +251,7 @@ export default function Login() {
             {logoSrc ? (
               <img
                 src={logoSrc}
-                alt="InternConnect logo"
+                alt="CareerLite logo"
                 className="h-30 w-70"
               />
             ) : null}
@@ -314,7 +314,7 @@ export default function Login() {
             <div className="mt-3 flex items-center justify-between">
               <div>
                 <h2 className="text-[32px] font-bold leading-tight">Step into your future career.</h2>
-                <p className="mt-1 text-sm text-white/70">Sign in to continue to InternConnect.</p>
+                <p className="mt-1 text-sm text-white/70">Sign in to continue to CareerLite.</p>
               </div>
             </div>
 
@@ -462,7 +462,7 @@ export default function Login() {
               </div>
 
               <p className="text-center text-sm text-white/70">
-                New to InternConnect?{' '}
+                New to CareerLite?{' '}
                 <Link to="/signup" className="font-semibold text-indigo-200 hover:text-indigo-100">
                   Create an account
                 </Link>

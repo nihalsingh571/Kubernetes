@@ -518,7 +518,7 @@ export default function AdminDashboard() {
     }
 
     const csv = buildCSV(headers, rows)
-    downloadCSV(csv, `internconnect-${section}-${new Date().toISOString().slice(0, 10)}.csv`)
+    downloadCSV(csv, `CareerLite-${section}-${new Date().toISOString().slice(0, 10)}.csv`)
     setFeedback({ type: 'success', message: 'CSV export ready.' })
   }
 
@@ -2499,7 +2499,7 @@ const handleSkillAdd = async (e) => {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-lg rounded-[32px] border border-white/10 bg-[#0b1024]/70 p-10 shadow-[0_35px_120px_rgba(4,6,20,0.75)] backdrop-blur">
             <div className="space-y-3 text-center">
               <Shield className="mx-auto h-10 w-10 text-indigo-300" />
-              <p className="text-xs uppercase tracking-[0.5em] text-white/40">InternConnect</p>
+              <p className="text-xs uppercase tracking-[0.5em] text-white/40">CareerLite</p>
               <h1 className="text-3xl font-semibold">Admin Control Center</h1>
               <p className="text-sm text-white/60">Secure access for platform operators. Two-factor ready.</p>
             </div>
@@ -2511,7 +2511,7 @@ const handleSkillAdd = async (e) => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="mt-2 w-full rounded-2xl border border-white/10 bg-[#12172f] px-4 py-3 text-white placeholder:text-white/30 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
-                  placeholder="admin@internconnect.ai"
+                  placeholder="admin@careerlite.ai"
                   required
                 />
               </div>
@@ -2945,7 +2945,7 @@ const handleSkillAdd = async (e) => {
       )}
       <aside className="hidden w-64 flex-col border-r border-white/5 bg-[#070b1a]/90 p-6 backdrop-blur lg:flex">
         <div className="mb-10 space-y-2">
-          <p className="text-xs uppercase tracking-[0.5em] text-white/40">InternConnect</p>
+          <p className="text-xs uppercase tracking-[0.5em] text-white/40">CareerLite</p>
           <h1 className="text-xl font-semibold">Admin Portal</h1>
         </div>
         <nav className="flex flex-1 flex-col gap-2 text-sm">
@@ -2978,7 +2978,7 @@ const handleSkillAdd = async (e) => {
             <p className="text-xs uppercase tracking-[0.35em] text-white/40">Control Center</p>
             <p className="text-xs text-white/50">Admin Dashboard</p>
             <h2 className="text-3xl font-semibold">Welcome back, {user.first_name || 'Admin'}</h2>
-            <p className="text-sm text-white/60">Review real-time intelligence across the InternConnect network.</p>
+            <p className="text-sm text-white/60">Review real-time intelligence across the CareerLite network.</p>
           </div>
           <div className="flex flex-wrap gap-3 text-xs text-white/60">
             <span className="rounded-full border border-white/10 px-4 py-2">{lastSynced ? `Last sync • ${lastSynced.toLocaleTimeString()}` : 'Awaiting sync...'}</span>
