@@ -67,7 +67,7 @@ export default function ResetPassword() {
       <div className="mx-auto w-full max-w-lg rounded-[40px] border border-white/5 bg-gradient-to-b from-[#070a1d] via-[#090b1f] to-[#04040d] p-8 shadow-[0_45px_140px_rgba(6,8,30,0.7)]">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <p className="text-xs uppercase tracking-[0.35em] text-indigo-200">Security</p>
-          <h1 className="mt-2 text-3xl font-bold leading-tight">Reset your CareerLite password</h1>
+          <h1 className="mt-2 text-3xl font-bold leading-tight">Reset your InternConnect password</h1>
           <p className="mt-2 text-sm text-white/70">
             Enter a strong password you have not used before. This link expires shortly for your safety.
           </p>

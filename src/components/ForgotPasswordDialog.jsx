@@ -32,7 +32,7 @@ export default function ForgotPasswordDialog({ open, onClose, defaultEmail = '' 
   const handleSubmit = async (event) => {
     event.preventDefault()
     if (!email) {
-      setStatus({ type: 'error', message: 'Enter the email you use for CareerLite.' })
+      setStatus({ type: 'error', message: 'Enter the email you use for InternConnect.' })
       return
     }
     setIsSubmitting(true)
@@ -125,7 +125,7 @@ export default function ForgotPasswordDialog({ open, onClose, defaultEmail = '' 
             )}
           </button>
           <p className="text-center text-xs text-white/60">
-            Need help? <a href="mailto:help@careerlite.ai" className="text-indigo-200 underline">Contact support</a>
+            Need help? <a href="mailto:help@internconnect.ai" className="text-indigo-200 underline">Contact support</a>
           </p>
         </form>
       </motion.div>

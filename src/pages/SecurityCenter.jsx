@@ -63,7 +63,7 @@ export default function SecurityCenter() {
           <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">Security Center</p>
           <h1 className="text-4xl font-semibold">Two-Factor Authentication</h1>
           <p className="text-white/70">
-            Protect your CareerLite account with a one-time password (OTP) from an authenticator app such as Google Authenticator,
+            Protect your InternConnect account with a one-time password (OTP) from an authenticator app such as Google Authenticator,
             Microsoft Authenticator, or 1Password.
           </p>
         </motion.div>

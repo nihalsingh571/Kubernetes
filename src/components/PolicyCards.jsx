@@ -16,14 +16,14 @@ export function TermsCardContent({ onClose }) {
         ) : null}
       </div>
       <header className="space-y-3 text-center">
-        <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">CareerLite</p>
+        <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">InternConnect</p>
         <h1 className="text-4xl font-semibold">Terms of Service</h1>
         <p className="text-sm text-white/70">Last Updated: March 2026</p>
       </header>
 
       <section className="space-y-4 text-sm leading-relaxed text-white/80">
         <p>
-          Welcome to CareerLite, an AI-powered internship recommendation platform that connects students with recruiters
+          Welcome to InternConnect, an AI-powered internship recommendation platform that connects students with recruiters
           through verified skills and machine learning–based matching. By creating an account or using the platform, you agree to
           these Terms of Service.
         </p>
@@ -46,7 +46,7 @@ export function TermsCardContent({ onClose }) {
           </li>
           <li>
             <strong>Intellectual Property.</strong> Platform content—including algorithms, designs, and software—belongs to
-            CareerLite. Do not reproduce or modify without permission.
+            InternConnect. Do not reproduce or modify without permission.
           </li>
           <li>
             <strong>Account Termination.</strong> We may suspend accounts for violations or abuse. Users may request deletion by
@@ -60,7 +60,7 @@ export function TermsCardContent({ onClose }) {
             <strong>Changes.</strong> Terms may change over time; continuing to use the platform signifies acceptance of updates.
           </li>
           <li>
-            <strong>Contact.</strong> Reach us at <span className="text-indigo-300">support@careerlite.ai</span> with any
+            <strong>Contact.</strong> Reach us at <span className="text-indigo-300">support@internconnect.ai</span> with any
             questions.
           </li>
         </ol>
@@ -85,14 +85,14 @@ export function PrivacyCardContent({ onClose }) {
         ) : null}
       </div>
       <header className="space-y-3 text-center">
-        <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">CareerLite</p>
+        <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">InternConnect</p>
         <h1 className="text-4xl font-semibold">Privacy Policy</h1>
         <p className="text-sm text-white/70">Last Updated: March 2026</p>
       </header>
 
       <section className="space-y-4 text-sm leading-relaxed text-white/80">
         <p>
-          CareerLite values your privacy and explains here how we collect, use, and protect your personal information while you
+          InternConnect values your privacy and explains here how we collect, use, and protect your personal information while you
           use our AI-powered internship platform.
         </p>
         <ol className="space-y-4 list-decimal pl-6">
@@ -124,7 +124,7 @@ export function PrivacyCardContent({ onClose }) {
             indicates acceptance.
           </li>
           <li>
-            <strong>Contact.</strong> Email <span className="text-indigo-300">support@careerlite.ai</span> for privacy questions.
+            <strong>Contact.</strong> Email <span className="text-indigo-300">support@internconnect.ai</span> for privacy questions.
           </li>
         </ol>
       </section>

@@ -63,7 +63,7 @@ export default function StudentLayout() {
     <div className="flex min-h-screen bg-gradient-to-br from-[#030616] to-[#090f2a] text-white">
       <aside className="hidden min-h-screen w-[260px] flex-col border-r border-white/5 bg-[#050b1f]/95 px-6 py-8 md:flex">
         <div>
-          <p className="text-sm uppercase tracking-[0.35em] text-indigo-200">CareerLite</p>
+          <p className="text-sm uppercase tracking-[0.35em] text-indigo-200">InternConnect</p>
           <h1 className="mt-2 text-2xl font-semibold">Student Hub</h1>
         </div>
         <nav className="mt-10 space-y-1 text-sm font-medium">

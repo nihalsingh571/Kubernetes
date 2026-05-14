@@ -15,14 +15,14 @@ export function PrivacyCard({ onClose }) {
         </button>
       </div>
       <header className="space-y-3 text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">CareerLite</p>
+          <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">InternConnect</p>
           <h1 className="text-4xl font-semibold">Privacy Policy</h1>
           <p className="text-sm text-white/70">Last Updated: March 2026</p>
         </header>
 
         <section className="space-y-4 text-sm leading-relaxed text-white/80">
           <p>
-            CareerLite values your privacy and explains here how we collect, use, and protect your personal information while you
+            InternConnect values your privacy and explains here how we collect, use, and protect your personal information while you
             use our AI-powered internship platform.
           </p>
           <ol className="space-y-4 list-decimal pl-6">
@@ -54,7 +54,7 @@ export function PrivacyCard({ onClose }) {
               indicates acceptance.
             </li>
             <li>
-              <strong>Contact.</strong> Email <span className="text-indigo-300">support@careerlite.ai</span> for privacy questions.
+              <strong>Contact.</strong> Email <span className="text-indigo-300">support@internconnect.ai</span> for privacy questions.
             </li>
           </ol>
         </section>

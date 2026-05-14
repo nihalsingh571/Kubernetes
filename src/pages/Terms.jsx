@@ -15,14 +15,14 @@ export function TermsCard({ onClose }) {
         </button>
       </div>
       <header className="space-y-3 text-center">
-          <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">CareerLite</p>
+          <p className="text-sm uppercase tracking-[0.4em] text-indigo-300">InternConnect</p>
           <h1 className="text-4xl font-semibold">Terms of Service</h1>
           <p className="text-sm text-white/70">Last Updated: March 2026</p>
         </header>
 
         <section className="space-y-4 text-sm leading-relaxed text-white/80">
           <p>
-            Welcome to CareerLite, an AI-powered internship recommendation platform that connects students with recruiters
+            Welcome to InternConnect, an AI-powered internship recommendation platform that connects students with recruiters
             through verified skills and machine learning–based matching. By creating an account or using the platform, you agree to
             these Terms of Service.
           </p>
@@ -45,7 +45,7 @@ export function TermsCard({ onClose }) {
             </li>
             <li>
               <strong>Intellectual Property.</strong> Platform content—including algorithms, designs, and software—belongs to
-              CareerLite. Do not reproduce or modify without permission.
+              InternConnect. Do not reproduce or modify without permission.
             </li>
             <li>
               <strong>Account Termination.</strong> We may suspend accounts for violations or abuse. Users may request deletion by
@@ -59,7 +59,7 @@ export function TermsCard({ onClose }) {
               <strong>Changes.</strong> Terms may change over time; continuing to use the platform signifies acceptance of updates.
             </li>
             <li>
-              <strong>Contact.</strong> Reach us at <span className="text-indigo-300">support@careerlite.ai</span> with any
+              <strong>Contact.</strong> Reach us at <span className="text-indigo-300">support@internconnect.ai</span> with any
               questions.
             </li>
           </ol>

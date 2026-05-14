@@ -119,7 +119,7 @@ export default function StudentDashboard() {
                 Student Command Center
               </p>
               <h1 className="text-xl sm:text-2xl font-semibold text-white">
-                CareerLite
+                InternConnect
               </h1>
             </div>
             <div className="hidden md:flex flex-1 max-w-lg">

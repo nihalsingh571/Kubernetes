@@ -201,7 +201,7 @@ export default function StudentProfile() {
         </div>
         {!isEligible ? (
           <div className="mt-5 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-4 text-sm text-amber-50">
-            <p className="font-semibold">Complete verification to unlock CareerLite features.</p>
+            <p className="font-semibold">Complete verification to unlock InternConnect features.</p>
             {missingFields.length ? <p className="mt-2">Missing: {missingFields.join(', ')}</p> : null}
             {!collegeEmailVerified ? <p className="mt-1">College email verification is required.</p> : null}
           </div>
