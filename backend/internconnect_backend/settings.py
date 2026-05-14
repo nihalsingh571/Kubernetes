@@ -221,3 +221,7 @@ GITHUB_REDIRECT_URI = os.getenv('GITHUB_REDIRECT_URI', 'http://localhost:8000/au
 
 RECAPTCHA_SITE_KEY = os.getenv('RECAPTCHA_SITE_KEY', '6LdJKvgrAAAAALtqDBLwM9NndI1qPBXOaPLSd6_w')
 RECAPTCHA_SECRET_KEY = os.getenv('RECAPTCHA_SECRET_KEY', '6LdJKvgrAAAAAG-W-6tpzKFbTOGaZJjCjlWLQl4t')
+
+# Media files (Resume uploads, profile images)
+MEDIA_URL = os.getenv('MEDIA_URL', '/media/')
+MEDIA_ROOT = os.path.join(BASE_DIR, os.getenv('MEDIA_ROOT', 'media'))
