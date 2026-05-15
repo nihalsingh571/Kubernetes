@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import {} from 'framer-motion'
 
 export default function CategoryCard({ label, onClick, active = false }) {
   const [tilt, setTilt] = useState({ x: 0, y: 0 })

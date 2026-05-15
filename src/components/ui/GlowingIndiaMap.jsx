@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import {} from 'framer-motion'
 import indiaMap from '../../assets/india-map.svg'
 
 export default function GlowingIndiaMap() {

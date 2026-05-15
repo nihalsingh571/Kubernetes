@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
@@ -36,7 +37,7 @@ export const AuthProvider = ({ children }) => {
                 navigate('/');
             }
             return { success: true };
-        } catch (error) {
+        } catch (_error) {
             return { success: false, error: 'Unable to complete login.' };
         }
     }, [fetchCurrentUser, navigate, navigateByRole]);

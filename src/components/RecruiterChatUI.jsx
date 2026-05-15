@@ -42,6 +42,7 @@ export default function RecruiterChatUI() {
         fetchConversations();
         const interval = setInterval(fetchConversations, 10000);
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -50,6 +51,7 @@ export default function RecruiterChatUI() {
             const interval = setInterval(() => fetchMessages(selectedConv.id), 5000);
             return () => clearInterval(interval);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedConv]);
 
     const scrollToBottom = () => {
@@ -188,7 +190,7 @@ export default function RecruiterChatUI() {
                 <InterviewScheduleModal 
                     conversation={selectedConv} 
                     onClose={() => setIsScheduling(false)} 
-                    onScheduled={(msg) => {
+                    onScheduled={() => {
                         setIsScheduling(false);
                         fetchMessages(selectedConv.id);
                     }}

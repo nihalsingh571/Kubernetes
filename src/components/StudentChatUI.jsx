@@ -38,6 +38,7 @@ export default function StudentChatUI() {
         fetchConversations();
         const interval = setInterval(fetchConversations, 10000);
         return () => clearInterval(interval);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -46,6 +47,7 @@ export default function StudentChatUI() {
             const interval = setInterval(() => fetchMessages(selectedConv.id), 5000);
             return () => clearInterval(interval);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedConv]);
 
     const scrollToBottom = () => {

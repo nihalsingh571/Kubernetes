@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react'
 
 const styles = {

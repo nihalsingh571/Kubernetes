@@ -75,6 +75,7 @@ export default function Assessment() {
             }
             clearTimer();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -92,6 +93,7 @@ export default function Assessment() {
             });
         }, 1000);
         return () => clearTimer();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentQuestionIndex, loading, questions.length]);
 
     const clearTimer = () => {

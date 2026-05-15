@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
+import {} from 'framer-motion'
 import { Mail, Loader2, CheckCircle2, AlertTriangle, X } from 'lucide-react'
 import API from '../services/api'
 
